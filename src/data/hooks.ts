@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { onChange } from "../db/store";
+import { onChange } from "./workspace";
 
 /** Runs `load` now and again after every local write. */
 export function useLive<T>(load: () => Promise<T>, deps: unknown[]): T | undefined {

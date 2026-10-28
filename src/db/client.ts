@@ -1,29 +1,11 @@
-// Drizzle over the Rust SQLite bridge (src-tauri/src/db.rs).
+// The app's data layer: @lumen/shared/client over the Rust SQLite bridge (src-tauri/src/db.rs).
 
 import { invoke } from "@tauri-apps/api/core";
-import { drizzle } from "drizzle-orm/sqlite-proxy";
-import * as schema from "@lumen/shared/schema/client";
+import { createLumen, type SqlDriver } from "@lumen/shared/client";
 
-type Method = "run" | "all" | "values" | "get";
+const driver: SqlDriver = {
+  query: (sql, params, method) => invoke<unknown[]>("db_query", { sql, params, method }),
+  batch: (queries) => invoke<unknown[][]>("db_batch", { queries }),
+};
 
-export interface RawQuery {
-  sql: string;
-  params?: unknown[];
-  method?: Method;
-}
-
-export const rawQuery = (sql: string, params: unknown[] = [], method: Method = "all") =>
-  invoke<unknown[]>("db_query", { sql, params, method });
-
-export const rawBatch = (queries: RawQuery[]) =>
-  invoke<unknown[]>("db_batch", {
-    queries: queries.map((q) => ({ sql: q.sql, params: q.params ?? [], method: q.method ?? "run" })),
-  });
-
-export const db = drizzle(
-  async (sql, params, method) => ({ rows: (await rawQuery(sql, params, method)) as any }),
-  async (queries) => (await rawBatch(queries)).map((rows) => ({ rows: rows as any })),
-  { schema },
-);
-
-export type Db = typeof db;
+export const lumen = createLumen(driver);

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Space } from "@lumen/shared/schema/client";
-import { migrate } from "./db/migrate";
-import { initClock } from "./db/store";
-import { bootstrap, createPage, getSpace } from "./data/workspace";
+import { lumen } from "./db/client";
+import { createPage, getSpace } from "./data/workspace";
 import { useLive } from "./data/hooks";
 import { Sidebar } from "./components/Sidebar";
 import { PageView } from "./components/PageView";
@@ -15,9 +14,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      await migrate();
-      await initClock();
-      setBoot({ state: "ready", space: await bootstrap() });
+      setBoot({ state: "ready", space: await lumen.start() });
     })().catch((e) => setBoot({ state: "error", message: String(e) }));
   }, []);
 
