@@ -4,7 +4,7 @@ import { plainText, richText, uuidv7, type FieldChange, type Json } from "@lumen
 import { block, space, type Block, type Space } from "@lumen/shared/schema/client";
 import { db } from "../db/client";
 import { write } from "../db/store";
-import { diffPage } from "../editor/diff";
+import { diffPage } from "@lumen/shared/editor";
 import type { Block as EditorBlock } from "@blocknote/core";
 
 const fields = (values: Record<string, Json>): FieldChange[] =>

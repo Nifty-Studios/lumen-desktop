@@ -3,7 +3,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import type { PartialBlock } from "@blocknote/core";
 import type { Block } from "@lumen/shared/schema/client";
-import { toEditorBlock, isEditorBlock } from "../editor/convert";
+import { toEditorBlock, isEditorBlock } from "@lumen/shared/editor";
 import { savePage } from "../data/workspace";
 import { useColorScheme } from "../data/hooks";
 
