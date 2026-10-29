@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from "react";
 import type { SuggestionMenuProps } from "@blocknote/react";
-import type { SlashItem } from "@lumen/shared/editor";
+import type { SlashItem } from "@lumen/shared/editor/blocknote";
 import { Icon } from "./Icon";
 
 export function SlashMenu({ items, selectedIndex, onItemClick }: SuggestionMenuProps<SlashItem>) {
