@@ -59,7 +59,7 @@ export function AuthScreen({ onDone, onLater, onClose }: Props) {
         <h1 className="font-serif text-[34px] leading-none font-semibold tracking-tight">Lumen</h1>
       </div>
       <p className="mb-6 text-[13.5px] leading-relaxed text-muted">
-        {mode === "signup" ? "Your notes on every device, and shared with whoever you choose." : "Welcome back. Your notes are waiting."}
+        {mode === "signup" ? "Your notes on all your devices." : "Welcome back. Your notes are waiting."}
       </p>
 
       <Segmented

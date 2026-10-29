@@ -11,12 +11,23 @@ import { PageView } from "./components/PageView";
 import { SearchDialog } from "./components/SearchDialog";
 import { Settings, type SettingsSection } from "./components/Settings";
 import { Icon } from "./components/Icon";
+import { TitleBar } from "./components/TitleBar";
 import { ToastProvider, useToast } from "./components/ui";
 import { notify } from "./lib/notify";
+import { updates } from "./lib/updates";
 
 type Boot = { state: "loading" } | { state: "error"; message: string } | { state: "auth" } | { state: "ready" };
 
 export default function App() {
+  return (
+    <>
+      <Screens />
+      <TitleBar />
+    </>
+  );
+}
+
+function Screens() {
   const [boot, setBoot] = useState<Boot>({ state: "loading" });
   const [welcome, setWelcome] = useState(false);
 
@@ -59,6 +70,8 @@ export default function App() {
       document.removeEventListener("visibilitychange", updateLive);
     };
   }, [boot.state]);
+
+  useEffect(() => (boot.state === "ready" ? updates.start() : undefined), [boot.state]);
 
   if (boot.state === "loading") return <LoadingMark />;
   if (welcome)
@@ -165,7 +178,7 @@ function Workspace() {
         />
       )}
       <main className="sheet min-w-0 flex-1 overflow-hidden rounded-[22px]">
-        {!sidebar && (
+        {!sidebar && !pageId && (
           <button
             onClick={() => setSidebar(true)}
             className="absolute top-2.5 left-3 z-20 grid h-8 w-8 place-items-center rounded-xl text-muted transition-colors hover:bg-hover hover:text-fg"
@@ -175,7 +188,7 @@ function Workspace() {
           </button>
         )}
         {pageId ? (
-          <PageView key={pageId} pageId={pageId} onOpen={setPageId} onSignIn={() => setSigningIn(true)} />
+          <PageView key={pageId} pageId={pageId} onOpen={setPageId} onSignIn={() => setSigningIn(true)} onShowSidebar={sidebar ? undefined : () => setSidebar(true)} />
         ) : (
           <div className="grid h-full place-items-center text-muted">
             {role !== "viewer" && (

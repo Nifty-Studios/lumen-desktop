@@ -88,7 +88,7 @@ export function ShareDialog({ page, onClose, onSignIn }: { page: Block; onClose:
 
         {!user ? (
           <div className="rounded-2xl bg-hover p-4 text-[13.5px] leading-relaxed">
-            <p className="mb-3 text-muted">Sharing needs an account, so the people you invite can reach your notes.</p>
+            <p className="mb-3 text-muted">Sign in to share pages.</p>
             <button onClick={onSignIn} className="flex items-center gap-2 rounded-xl bg-accent px-3.5 py-2 font-medium text-accent-fg hover:brightness-110">
               <Icon name="log-in" size={16} /> Sign in or create an account
             </button>
@@ -126,7 +126,7 @@ export function ShareDialog({ page, onClose, onSignIn }: { page: Block; onClose:
               </form>
             ) : (
               <p className="mt-4 rounded-xl bg-hover px-3.5 py-2.5 text-[13px] text-muted">
-                {tab === "page" ? "Only people who can edit this workspace can share its pages." : "Only owners can invite people to the workspace."}
+                {tab === "page" ? "Only editors can share pages here." : "Only owners can invite people to the workspace."}
               </p>
             )}
 

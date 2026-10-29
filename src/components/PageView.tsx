@@ -17,6 +17,8 @@ interface Props {
   pageId: string;
   onOpen: (id: string) => void;
   onSignIn: () => void;
+  /** Set while the sidebar is hidden: the top bar shows a button to bring it back. */
+  onShowSidebar?: () => void;
 }
 
 /** Put the caret at the end of the page, adding an empty line if the last block has text. */
@@ -30,7 +32,7 @@ function focusEnd(editor: LumenEditor) {
   editor.focus();
 }
 
-export function PageView({ pageId, onOpen, onSignIn }: Props) {
+export function PageView({ pageId, onOpen, onSignIn, onShowSidebar }: Props) {
   const page = useLive(() => getBlock(pageId), [pageId]);
   // Viewers read; everyone else edits. (Until it loads, assume they can.)
   const readOnly = useLive(() => roleOf(pageId), [pageId]) === "viewer";
@@ -51,7 +53,7 @@ export function PageView({ pageId, onOpen, onSignIn }: Props) {
 
   return (
     <div ref={scroller} className="h-full overflow-y-auto" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 8)}>
-      <TopBar page={page} path={path} scrolled={scrolled} readOnly={readOnly} onOpen={onOpen} onSignIn={onSignIn} />
+      <TopBar page={page} path={path} scrolled={scrolled} readOnly={readOnly} onOpen={onOpen} onSignIn={onSignIn} onShowSidebar={onShowSidebar} />
       {!page.alive && (
         <div className="mx-auto mt-2 flex max-w-[720px] items-center gap-3 rounded-2xl bg-hover px-4 py-3 text-[13.5px]">
           <Icon name="trash" size={16} className="text-muted" />
@@ -102,9 +104,10 @@ interface TopBarProps {
   readOnly: boolean;
   onOpen: (id: string) => void;
   onSignIn: () => void;
+  onShowSidebar?: () => void;
 }
 
-function TopBar({ page, path, scrolled, readOnly, onOpen, onSignIn }: TopBarProps) {
+function TopBar({ page, path, scrolled, readOnly, onOpen, onSignIn, onShowSidebar }: TopBarProps) {
   const status = useSyncStatus();
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   const [sharing, setSharing] = useState(false);
@@ -128,6 +131,15 @@ function TopBar({ page, path, scrolled, readOnly, onOpen, onSignIn }: TopBarProp
         scrolled ? "bg-glass shadow-[0_10px_30px_-18px_var(--shadow)] backdrop-blur-xl" : ""
       }`}
     >
+      {onShowSidebar && (
+        <button
+          onClick={onShowSidebar}
+          className="-ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-hover hover:text-fg"
+          title="Show sidebar (Ctrl \)"
+        >
+          <Icon name="panel-left" size={17} />
+        </button>
+      )}
       <nav className="flex min-w-0 flex-1 items-center gap-0.5 text-[13px]">
         {crumbs.map((p, i) => {
           const icon = resolveIcon(p.format.icon);

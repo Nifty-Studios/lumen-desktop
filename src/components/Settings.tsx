@@ -11,6 +11,7 @@ import {
 } from "@lumen/shared/ambient";
 import type { IconName } from "@lumen/shared/icons";
 import type { ImportSummary } from "@lumen/shared/client";
+import { getVersion } from "@tauri-apps/api/app";
 import { lumen } from "../db/client";
 import { useAccount } from "../data/hooks";
 import { useAmbient } from "../ambient/AmbientProvider";
@@ -109,7 +110,7 @@ function Appearance() {
   const { settings, update } = useAmbient();
   return (
     <>
-      <Heading title="Appearance">Light or dark, Lumen follows the sun: dark mode lifts a little by day and goes deep at night, light mode turns into warm paper after dark.</Heading>
+      <Heading title="Appearance">Lumen shifts with the time of day.</Heading>
       <Field label="Theme">
         <Segmented
           value={settings.theme}
@@ -121,7 +122,7 @@ function Appearance() {
           ]}
         />
       </Field>
-      <Field label="Motion" hint="Calm slows the sky down; Still paints it once and keeps it there.">
+      <Field label="Motion" hint="How much the sky moves.">
         <Segmented
           value={settings.motion}
           onChange={(motion) => update({ motion })}
@@ -153,7 +154,7 @@ function Appearance() {
           ]}
         />
       </Field>
-      <Field label="Ambient sound" hint="Soft rain, wind and distant thunder that follow the sky.">
+      <Field label="Ambient sound" hint="Rain and wind sounds that match the sky.">
         <Toggle
           label="Ambient sound"
           checked={settings.sound}
@@ -221,7 +222,7 @@ function Environment() {
   return (
     <>
       <Heading title="Sky & mood">
-        Live follows your real sun, clouds and rain. Pick a mood to set the scene yourself, or mix a time of day with any weather.
+        Show your real sky, or pick a mood.
       </Heading>
       <div className="grid grid-cols-3 gap-3">
         {MOODS.map((m) => (
@@ -260,7 +261,7 @@ function Location() {
   return (
     <>
       <Heading title="Location & weather">
-        Your location sets sunrise and sunset. With live weather on, Lumen asks Open-Meteo for the weather there about every 15 minutes. Only the coordinates are sent; nothing else leaves this device.
+        Used for sunrise, sunset and the weather.
       </Heading>
       <div className="mb-4 flex items-center gap-4 rounded-2xl bg-hover p-4">
         <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent-soft text-accent">
@@ -268,7 +269,7 @@ function Location() {
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[15px]">{loc?.label ?? "Not set yet"}</div>
-          <div className="text-[12.5px] text-muted">{loc ? `${source} · ${loc.lat.toFixed(2)}, ${loc.lon.toFixed(2)}` : "Using an estimate from your timezone"}</div>
+          <div className="text-[12.5px] text-muted">{loc ? source : "Guessed from your timezone"}</div>
         </div>
         <Button
           icon="locate-fixed"
@@ -372,10 +373,10 @@ function Data() {
 
   return (
     <>
-      <Heading title="Backup & import">Your notes are yours. Take them anywhere as one file, and bring your Notion pages in.</Heading>
+      <Heading title="Backup & import">Save a copy of your notes, or bring them in from Notion.</Heading>
 
       <DataCard icon="file-archive" title="Back up everything">
-        One .zip with your whole workspace and its history, plus every page as a readable Markdown file. Restore it on any device, even offline.
+        All your notes in one file. Restore it on any device.
         <div className="mt-3 flex gap-2">
           <Button
             tone="primary"
@@ -410,8 +411,7 @@ function Data() {
       </DataCard>
 
       <DataCard icon="import" title="Import from Notion">
-        In Notion, open <span className="text-fg">Settings → General → Export all workspace content</span>, choose <span className="text-fg">Markdown & CSV</span> with
-        subpages included, then pick the downloaded .zip here. Your pages keep their nesting; databases become pages of rows. Importing the same export again skips what's already here.
+        In Notion, go to <span className="text-fg">Settings → Export all workspace content</span> and choose <span className="text-fg">Markdown & CSV</span>. Then pick the .zip here.
         <div className="mt-3">
           <Button
             icon="file-up"
@@ -468,14 +468,14 @@ function Account({ onSignIn, onSignedOut }: { onSignIn: () => void; onSignedOut:
   if (!available)
     return (
       <>
-        <Heading title="Account">This build of Lumen has no sync server, so everything stays on this device.</Heading>
+        <Heading title="Account">Your notes stay on this device.</Heading>
       </>
     );
   if (!user)
     return (
       <>
         <Heading title="Account">
-          You're using Lumen on this device only. Sign in to sync your notes to your other devices, and to share pages with people.
+          Sign in to see your notes on all your devices and share pages.
         </Heading>
         <Button tone="primary" icon="log-in" onClick={onSignIn}>
           Sign in or create an account
@@ -484,7 +484,7 @@ function Account({ onSignIn, onSignedOut }: { onSignIn: () => void; onSignedOut:
     );
   return (
     <>
-      <Heading title="Account">Signed in. Your notes sync to every device you sign in on.</Heading>
+      <Heading title="Account">Your notes sync across your devices.</Heading>
       <div className="mb-6 flex items-center gap-4 rounded-2xl bg-hover p-4">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-accent-soft text-[18px] font-semibold text-accent">{user.name[0]?.toUpperCase()}</span>
         <div className="min-w-0">
@@ -496,8 +496,7 @@ function Account({ onSignIn, onSignedOut }: { onSignIn: () => void; onSignedOut:
         Sign out
       </Button>
       <p className="mt-2 max-w-[52ch] text-[12.5px] leading-relaxed text-muted">
-        Your notes stay on this device and keep working offline; they just stop syncing. If someone else signs in here, your unsent changes go to
-        your account first, and then the device holds only their notes.
+        Your notes stay here after you sign out. They just stop syncing.
       </p>
     </>
   );
@@ -519,7 +518,7 @@ function AiConnection({ onSignIn }: { onSignIn: () => void }) {
   if (!user)
     return (
       <>
-        <Heading title="AI connection">Let Claude or another assistant read, answer questions about, write and sort your notes. It needs an account.</Heading>
+        <Heading title="AI connection">Let Claude read and organize your notes. You need an account for this.</Heading>
         <Button tone="primary" icon="log-in" onClick={onSignIn}>
           Sign in or create an account
         </Button>
@@ -541,13 +540,12 @@ function AiConnection({ onSignIn }: { onSignIn: () => void }) {
   return (
     <>
       <Heading title="AI connection">
-        A private link that lets Claude (or any assistant that supports MCP) read your notes, answer questions about them, add notes, and sort pages into groups.
-        Its changes show up here within seconds.
+        A private link that lets Claude read and edit your notes.
       </Heading>
 
       {fresh ? (
         <div className="mb-5 rounded-2xl bg-accent-soft p-4">
-          <div className="mb-2 text-[13px] font-medium">Your new link (shown once; keep it private)</div>
+          <div className="mb-2 text-[13px] font-medium">Your link. Copy it now and keep it private.</div>
           <div className="flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-lg bg-surface px-2.5 py-2 text-[12px]">{fresh}</code>
             <Button
@@ -571,15 +569,9 @@ function AiConnection({ onSignIn }: { onSignIn: () => void }) {
       )}
 
       <div className="mb-6 space-y-2 text-[13.5px] leading-relaxed text-muted">
-        <p className="font-medium text-fg">Connect Claude</p>
-        <p>
-          <b className="text-fg">claude.ai, the Claude app on your phone, or Claude Desktop:</b> Settings → Connectors → Add custom connector. Name it “Lumen” and paste the link.
-          Connectors you add on claude.ai also work in the phone app.
-        </p>
-        <p>
-          <b className="text-fg">Claude Code:</b> <code className="rounded bg-hover px-1.5 py-0.5 text-[12px]">claude mcp add --transport http lumen &lt;link&gt;</code>
-        </p>
-        <p>Then ask things like “What did I note about the trip?”, “Add milk to my groceries page”, or “Sort my pages into groups”.</p>
+        <p className="font-medium text-fg">How to connect</p>
+        <p>In Claude, open Settings → Connectors → Add custom connector, name it “Lumen” and paste the link.</p>
+        <p>Then ask things like “Add milk to my groceries page”.</p>
       </div>
 
       {links && links.length > 0 && (
@@ -613,17 +605,19 @@ function AiConnection({ onSignIn }: { onSignIn: () => void }) {
 
 function About() {
   const status = lumen.sync?.current;
+  const [version, setVersion] = useState("");
+  useEffect(() => void getVersion().then(setVersion, () => {}), []);
   return (
     <>
-      <Heading title="About Lumen">A light, local-first place for your notes. Everything lives on this device; sync runs quietly in the background.</Heading>
+      <Heading title="About Lumen">A calm place for your notes.</Heading>
       <div className="space-y-1 text-[13.5px]">
         <Field label="Version">
-          <span className="text-muted">0.1.0</span>
+          <span className="text-muted">{version}</span>
         </Field>
         <Field label="This device">
           <span className="font-mono text-[12px] text-muted">{lumen.store.deviceId.slice(-12)}</span>
         </Field>
-        <Field label="Sync" hint={lumen.account.current ? "Signed in: changes sync to your other devices." : lumen.sync ? "Signed out: notes stay on this device." : "No sync server configured; notes stay on this device."}>
+        <Field label="Sync" hint={lumen.account.current ? "On across your devices." : "Only on this device."}>
           <span className="text-muted">
             {!lumen.sync ? "Off" : status?.lastSyncedAt ? `Last synced ${new Date(status.lastSyncedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : status?.state ?? "Waiting"}
           </span>

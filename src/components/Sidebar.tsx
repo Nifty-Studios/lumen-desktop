@@ -23,6 +23,7 @@ import { useAmbient } from "../ambient/AmbientProvider";
 import { Clock } from "../ambient/Clock";
 import { Icon } from "./Icon";
 import { Kbd, Popover } from "./ui";
+import { updates, useUpdate } from "../lib/updates";
 
 interface Props {
   space: Space;
@@ -112,6 +113,7 @@ export function Sidebar({ space, role, currentId, onOpen, onSearch, onSettings, 
         )}
       </nav>
 
+      <UpdateCard />
       <AccountCard onSignIn={onSignIn} />
 
       <div className="flex items-center gap-1 px-2.5 pt-1 pb-2.5">
@@ -212,6 +214,50 @@ function AccountCard({ onSignIn }: { onSignIn: () => void }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** A new version of Lumen: download it, then install it (which restarts the app). */
+function UpdateCard() {
+  const u = useUpdate();
+  if (u.phase === "idle") return null;
+  const button = "rounded-lg px-3 py-1.5 text-[12.5px]";
+  return (
+    <div className="mx-2.5 mb-1.5 rounded-2xl bg-accent-soft px-3.5 py-3">
+      <div className="flex items-center gap-2 text-[13px] font-medium">
+        <Icon name={u.phase === "error" ? "triangle-alert" : "download"} size={16} className="text-accent" />
+        {u.phase === "available" && `Lumen ${u.version} is here`}
+        {u.phase === "downloading" && `Downloading ${u.version}…`}
+        {u.phase === "ready" && "Ready to install"}
+        {u.phase === "installing" && "Installing…"}
+        {u.phase === "error" && "The update didn't work"}
+      </div>
+      <p className="mt-1 text-[12.5px] leading-snug text-muted">
+        {u.phase === "available" && "A new version is ready to download."}
+        {u.phase === "downloading" && "You can keep writing."}
+        {u.phase === "ready" && "Lumen will close and reopen. Your notes are saved."}
+        {u.phase === "installing" && "Lumen will reopen in a moment."}
+        {u.phase === "error" && "Check your connection and try again."}
+      </p>
+      {u.phase === "downloading" && (
+        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-active">
+          <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${Math.round(u.progress * 100)}%` }} />
+        </div>
+      )}
+      {(u.phase === "available" || u.phase === "ready" || u.phase === "error") && (
+        <div className="mt-2.5 flex gap-1.5">
+          <button
+            onClick={() => (u.phase === "available" ? updates.download() : u.phase === "ready" ? updates.install() : updates.retry())}
+            className={`${button} bg-accent font-medium text-accent-fg hover:brightness-110`}
+          >
+            {u.phase === "available" ? "Download" : u.phase === "ready" ? "Install now" : "Try again"}
+          </button>
+          <button onClick={() => updates.later()} className={`${button} text-muted hover:bg-hover hover:text-fg`}>
+            Later
+          </button>
+        </div>
+      )}
     </div>
   );
 }
