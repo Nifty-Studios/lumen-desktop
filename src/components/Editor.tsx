@@ -1,22 +1,60 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useCreateBlockNote } from "@blocknote/react";
+import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
-import type { PartialBlock } from "@blocknote/core";
+import { en } from "@blocknote/core/locales";
+import type { BlockNoteEditor, PartialBlock } from "@blocknote/core";
 import type { Block } from "@lumen/shared/schema/client";
-import { toEditorBlock, isEditorBlock } from "@lumen/shared/editor";
+import { filterSlashItems, isEditorBlock, lumenSchema, slashItems, toEditorBlock, type SlashItem } from "@lumen/shared/editor";
 import type { PageSession } from "../data/workspace";
-import { useColorScheme } from "../data/hooks";
+import { useAmbient } from "../ambient/AmbientProvider";
+import { SlashMenu } from "./SlashMenu";
 
 const SAVE_DELAY = 400;
+const MAX_IMAGE_SIDE = 1800;
+
+export type LumenEditor = BlockNoteEditor<typeof lumenSchema.blockSchema, typeof lumenSchema.inlineContentSchema, typeof lumenSchema.styleSchema>;
 
 interface Props {
   page: Block;
   session: PageSession;
+  onReady?: (editor: LumenEditor) => void;
+  onWords?: (words: number) => void;
 }
 
-export function Editor({ page, session }: Props) {
+/** Images are stored in the page (no file storage yet), so large photos are scaled down first. */
+async function imageToDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1 && file.size < 900_000) {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL(file.type === "image/png" ? "image/png" : "image/webp", 0.86);
+}
+
+const countWords = (editor: LumenEditor) => {
+  let words = 0;
+  const visit = (blocks: LumenEditor["document"]) => {
+    for (const b of blocks) {
+      if (Array.isArray(b.content)) for (const c of b.content) if (c.type === "text") words += c.text.split(/\s+/).filter(Boolean).length;
+      visit(b.children);
+    }
+  };
+  visit(editor.document);
+  return words;
+};
+
+export function Editor({ page, session, onReady, onWords }: Props) {
   const { blocks } = session;
-  const scheme = useColorScheme();
+  const { theme } = useAmbient();
   const initialContent = useMemo(() => {
     const top = page.content
       .map((id) => blocks.get(id))
@@ -27,7 +65,18 @@ export function Editor({ page, session }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const editor = useCreateBlockNote({ initialContent }, []);
+  const editor = useCreateBlockNote(
+    {
+      schema: lumenSchema,
+      initialContent: initialContent as never,
+      uploadFile: imageToDataUrl,
+      dictionary: {
+        ...en,
+        placeholders: { ...en.placeholders, default: "Write, or press / for blocks", emptyDocument: "Start writing, or press / for blocks" },
+      },
+    },
+    [],
+  );
   const timer = useRef<number>(undefined);
   const dirty = useRef(false);
 
@@ -35,11 +84,13 @@ export function Editor({ page, session }: Props) {
     window.clearTimeout(timer.current);
     if (!dirty.current) return;
     dirty.current = false;
-    session.save(editor.document).catch(console.error);
+    session.save(editor.document as never).catch(console.error);
   };
 
-  // Save when leaving the page or closing the window.
   useEffect(() => {
+    onReady?.(editor);
+    onWords?.(countWords(editor));
+    // Save when leaving the page or closing the window.
     window.addEventListener("beforeunload", flush);
     return () => {
       window.removeEventListener("beforeunload", flush);
@@ -51,12 +102,24 @@ export function Editor({ page, session }: Props) {
   return (
     <BlockNoteView
       editor={editor}
-      theme={scheme}
+      theme={theme.dark ? "dark" : "light"}
+      slashMenu={false}
+      emojiPicker={false}
       onChange={() => {
         dirty.current = true;
         window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(flush, SAVE_DELAY);
+        timer.current = window.setTimeout(() => {
+          flush();
+          onWords?.(countWords(editor));
+        }, SAVE_DELAY);
       }}
-    />
+    >
+      <SuggestionMenuController<(query: string) => Promise<SlashItem[]>>
+        triggerCharacter="/"
+        getItems={async (query) => filterSlashItems(slashItems(editor), query)}
+        suggestionMenuComponent={SlashMenu}
+        onItemClick={(item) => item.onItemClick()}
+      />
+    </BlockNoteView>
   );
 }

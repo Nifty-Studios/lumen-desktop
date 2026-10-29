@@ -1,61 +1,273 @@
-@import "@blocknote/core/fonts/inter.css";
-@import "@blocknote/mantine/style.css";
 @import "tailwindcss";
+
+/* Colors come from the living sky (ambient/theme.ts in @lumen/shared), set on :root by
+   AmbientProvider. Registered so theme changes glide instead of snapping. */
+@property --sky-top { syntax: "<color>"; inherits: true; initial-value: #0b0c1a; }
+@property --sky-mid { syntax: "<color>"; inherits: true; initial-value: #141633; }
+@property --sky-bottom { syntax: "<color>"; inherits: true; initial-value: #1d1b3a; }
+@property --glass { syntax: "<color>"; inherits: true; initial-value: rgba(14, 15, 26, 0.8); }
+@property --surface { syntax: "<color>"; inherits: true; initial-value: rgba(22, 23, 36, 0.96); }
+@property --text { syntax: "<color>"; inherits: true; initial-value: #e8e5df; }
+@property --muted { syntax: "<color>"; inherits: true; initial-value: #8d8a99; }
+@property --accent { syntax: "<color>"; inherits: true; initial-value: #a99cff; }
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --color-bg: var(--lumen-bg);
-  --color-panel: var(--lumen-panel);
-  --color-hover: var(--lumen-hover);
-  --color-border: var(--lumen-border);
-  --color-fg: var(--lumen-fg);
-  --color-muted: var(--lumen-muted);
-  --color-accent: var(--lumen-accent);
+  --font-serif: "Fraunces Variable", Georgia, "Times New Roman", serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+  --color-glass: var(--glass);
+  --color-surface: var(--surface);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--border);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-text);
+  --color-danger: var(--danger);
 }
 
 :root {
-  --lumen-bg: #ffffff;
-  --lumen-panel: #f7f7f5;
-  --lumen-hover: #ebebea;
-  --lumen-border: #e6e6e3;
-  --lumen-fg: #37352f;
-  --lumen-muted: #91918e;
-  --lumen-accent: #2383e2;
-  color-scheme: light;
+  transition:
+    --sky-top 2.4s ease,
+    --sky-mid 2.4s ease,
+    --sky-bottom 2.4s ease,
+    --glass 1.2s ease,
+    --surface 1.2s ease,
+    --text 1.2s ease,
+    --muted 1.2s ease,
+    --accent 1.2s ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --lumen-bg: #191919;
-    --lumen-panel: #202020;
-    --lumen-hover: #2c2c2c;
-    --lumen-border: #2f2f2f;
-    --lumen-fg: #e6e6e4;
-    --lumen-muted: #8a8a87;
-    --lumen-accent: #529cca;
-    color-scheme: dark;
+/* In the base layer so Tailwind utilities always win over these element defaults. */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--sky-bottom);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--selection);
+  }
+
+  button {
+    cursor: default;
+  }
+
+  /* Focus shows as a soft fill, never a ring. */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    background-color: var(--hover);
   }
 }
 
-html,
-body,
-#root {
-  height: 100%;
+/* No outlines or rings anywhere. */
+*,
+*:focus,
+*:focus-visible {
+  outline: none !important;
 }
 
-body {
-  margin: 0;
-  background: var(--lumen-bg);
-  color: var(--lumen-fg);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hover);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--active);
+  background-clip: padding-box;
 }
 
-/* Let the editor inherit the app background instead of BlockNote's own. */
+/* Frosted sheets floating over the sky. Separation comes from blur and shadow, never lines. */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(30px) saturate(1.45);
+  box-shadow:
+    0 30px 80px -30px var(--shadow),
+    0 2px 10px -4px var(--shadow);
+}
+/* The page sheet: its glass thins out in the top-right corner so the sun or moon glows through. */
+.sheet {
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    0 30px 80px -30px var(--shadow),
+    0 2px 10px -4px var(--shadow);
+}
+.sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--glass);
+  backdrop-filter: blur(30px) saturate(1.45);
+  mask: radial-gradient(340px 240px at calc(100% - 70px) 0, rgba(0, 0, 0, 0.45), #000 100%);
+}
+.surface {
+  background: var(--surface);
+  backdrop-filter: blur(26px) saturate(1.3);
+  box-shadow:
+    0 30px 90px -20px var(--shadow),
+    0 6px 20px -8px var(--shadow);
+}
+
+.font-serif {
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 60, "WONK" 0;
+}
+
+@keyframes lumen-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+.animate-pop {
+  animation: lumen-pop 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes lumen-fade {
+  from {
+    opacity: 0;
+  }
+}
+.animate-fade {
+  animation: lumen-fade 200ms ease-out;
+}
+
+/* ---- Editor (BlockNote) -------------------------------------------------------------- */
+
 .bn-container[data-color-scheme] {
-  --bn-colors-editor-background: var(--lumen-bg);
-  --bn-colors-editor-text: var(--lumen-fg);
+  --bn-colors-editor-background: transparent;
+  --bn-colors-editor-text: var(--text);
+  --bn-colors-menu-background: var(--surface);
+  --bn-colors-menu-text: var(--text);
+  --bn-colors-tooltip-background: var(--surface);
+  --bn-colors-tooltip-text: var(--text);
+  --bn-colors-hovered-background: var(--hover);
+  --bn-colors-hovered-text: var(--text);
+  --bn-colors-selected-background: var(--accent-soft);
+  --bn-colors-selected-text: var(--text);
+  --bn-colors-disabled-background: var(--hover);
+  --bn-colors-disabled-text: var(--faint);
+  --bn-colors-shadow: var(--shadow);
+  --bn-colors-border: transparent;
+  --bn-colors-side-menu: var(--faint);
+  --bn-border-radius: 12px;
+  --bn-font-family: var(--font-sans);
+  --mantine-color-default-border: transparent;
+  --mantine-color-body: var(--surface);
+  --mantine-color-text: var(--text);
 }
-.bn-editor {
+.bn-container .bn-editor {
   padding-inline: 0;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1.7;
+}
+.bn-editor,
+.bn-editor:focus,
+.ProseMirror,
+.ProseMirror:focus,
+.ProseMirror-focused {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.bn-container .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child)::before,
+.bn-container [data-is-empty-and-focused] .bn-inline-content::before {
+  color: var(--faint);
+}
+.bn-block-content[data-content-type="heading"] h1,
+.bn-block-content[data-content-type="heading"] h2,
+.bn-block-content[data-content-type="heading"] h3 {
+  font-family: var(--font-serif);
+  font-variation-settings: "SOFT" 60;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+.bn-block-content[data-content-type="quote"] blockquote {
+  border-left: 3px solid var(--accent-soft);
+  color: var(--muted);
+  font-style: italic;
+}
+.bn-block-content[data-content-type="codeBlock"] {
+  background: var(--hover);
+  border-radius: 12px;
+  font-family: var(--font-mono);
+}
+.bn-block-content[data-content-type="checkListItem"] input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.bn-block-content[data-content-type="checkListItem"][data-checked="true"] .bn-inline-content {
+  color: var(--faint);
+}
+.bn-block-content[data-content-type="divider"] hr {
+  border-color: var(--border);
+}
+.bn-container .bn-side-menu .mantine-UnstyledButton-root {
+  color: var(--faint);
+}
+.bn-container .mantine-Menu-dropdown,
+.bn-container .bn-toolbar,
+.bn-container .mantine-Popover-dropdown {
+  border: none !important;
+  backdrop-filter: blur(24px);
+  box-shadow:
+    0 24px 60px -20px var(--shadow),
+    0 4px 14px -6px var(--shadow) !important;
+}
+
+/* Callout block (shared/editor/schema.ts) */
+.lumen-callout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 12px 16px 12px 12px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+}
+.lumen-callout-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 0.5px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.lumen-callout-icon:hover {
+  background: var(--hover);
+}
+.lumen-callout-content {
+  flex: 1;
+  min-width: 0;
 }

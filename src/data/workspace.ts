@@ -5,6 +5,8 @@ export const {
   getSpace,
   pageTree,
   getBlock,
+  childPages,
+  pagePath,
   openPage,
   createPage,
   renamePage,
