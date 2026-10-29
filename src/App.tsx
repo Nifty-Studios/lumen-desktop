@@ -5,6 +5,7 @@ import { useLive } from "./data/hooks";
 import { AmbientProvider } from "./ambient/AmbientProvider";
 import { Sky } from "./ambient/Sky";
 import { AuthScreen } from "./components/Auth";
+import { LoadingMark, WelcomeVideo } from "./components/Intro";
 import { Sidebar } from "./components/Sidebar";
 import { PageView } from "./components/PageView";
 import { SearchDialog } from "./components/SearchDialog";
@@ -17,10 +18,15 @@ type Boot = { state: "loading" } | { state: "error"; message: string } | { state
 
 export default function App() {
   const [boot, setBoot] = useState<Boot>({ state: "loading" });
+  const [welcome, setWelcome] = useState(false);
 
   useEffect(() => {
     lumen.start().then(
-      ({ needsAuth }) => setBoot({ state: needsAuth ? "auth" : "ready" }),
+      ({ needsAuth }) => {
+        // First launch on this device: the welcome animation plays before sign-in.
+        if (needsAuth && !lumen.getSettings().welcomed) setWelcome(true);
+        setBoot({ state: needsAuth ? "auth" : "ready" });
+      },
       (e) => setBoot({ state: "error", message: String(e) }),
     );
   }, []);
@@ -54,7 +60,16 @@ export default function App() {
     };
   }, [boot.state]);
 
-  if (boot.state === "loading") return null;
+  if (boot.state === "loading") return <LoadingMark />;
+  if (welcome)
+    return (
+      <WelcomeVideo
+        onDone={() => {
+          setWelcome(false);
+          void lumen.updateSettings({ welcomed: true });
+        }}
+      />
+    );
   if (boot.state === "error")
     return <pre className="p-6 text-sm whitespace-pre-wrap text-red-500">Lumen could not start: {boot.message}</pre>;
   return (
