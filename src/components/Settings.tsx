@@ -10,7 +10,7 @@ import {
   type Place,
 } from "@lumen/shared/ambient";
 import type { IconName } from "@lumen/shared/icons";
-import { UnsyncedChangesError, type ImportSummary } from "@lumen/shared/client";
+import type { ImportSummary } from "@lumen/shared/client";
 import { lumen } from "../db/client";
 import { useAccount } from "../data/hooks";
 import { useAmbient } from "../ambient/AmbientProvider";
@@ -454,18 +454,13 @@ function Data() {
 
 function Account({ onSignIn, onSignedOut }: { onSignIn: () => void; onSignedOut: () => void }) {
   const { user, available } = useAccount();
-  const [pending, setPending] = useState<number>();
   const [busy, setBusy] = useState(false);
 
-  const signOut = async (force = false) => {
+  const signOut = async () => {
     setBusy(true);
-    try {
-      await lumen.signOut({ force });
-      onSignedOut();
-    } catch (e) {
-      if (e instanceof UnsyncedChangesError) setPending(e.pending);
-      setBusy(false);
-    }
+    await lumen.signOut();
+    setBusy(false);
+    onSignedOut();
   };
 
   if (!available)
@@ -495,29 +490,13 @@ function Account({ onSignIn, onSignedOut }: { onSignIn: () => void; onSignedOut:
           <div className="truncate text-[13px] text-muted">{user.email}</div>
         </div>
       </div>
-      {pending === undefined ? (
-        <>
-          <Button tone="soft" icon="log-out" disabled={busy} onClick={() => signOut()}>
-            Sign out of this device
-          </Button>
-          <p className="mt-2 max-w-[52ch] text-[12.5px] leading-relaxed text-muted">Signing out removes your notes from this device. They stay in your account.</p>
-        </>
-      ) : (
-        <div className="rounded-2xl bg-hover p-4">
-          <p className="mb-3 text-[13.5px] leading-relaxed">
-            {pending} {pending === 1 ? "change hasn't" : "changes haven't"} reached the server yet, probably because you're offline. Signing out now would lose{" "}
-            {pending === 1 ? "it" : "them"}.
-          </p>
-          <div className="flex gap-2">
-            <Button tone="soft" onClick={() => setPending(undefined)}>
-              Stay signed in
-            </Button>
-            <Button tone="danger" icon="log-out" disabled={busy} onClick={() => signOut(true)}>
-              Sign out anyway
-            </Button>
-          </div>
-        </div>
-      )}
+      <Button tone="soft" icon="log-out" disabled={busy} onClick={signOut}>
+        Sign out
+      </Button>
+      <p className="mt-2 max-w-[52ch] text-[12.5px] leading-relaxed text-muted">
+        Your notes stay on this device and keep working offline; they just stop syncing. If someone else signs in here, your unsent changes go to
+        your account first, and then the device holds only their notes.
+      </p>
     </>
   );
 }

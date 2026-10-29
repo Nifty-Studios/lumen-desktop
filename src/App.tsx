@@ -69,14 +69,14 @@ export default function App() {
             }}
           />
         ) : (
-          <Workspace onSignedOut={() => setBoot({ state: "auth" })} />
+          <Workspace />
         )}
       </ToastProvider>
     </AmbientProvider>
   );
 }
 
-function Workspace({ onSignedOut }: { onSignedOut: () => void }) {
+function Workspace() {
   // Bumped when the workspace is switched (a device-local choice, not a data change).
   const [picked, setPicked] = useState(0);
   const space = useLive(getSpace, [picked]);
@@ -182,7 +182,10 @@ function Workspace({ onSignedOut }: { onSignedOut: () => void }) {
             setSettings(null);
             setSigningIn(true);
           }}
-          onSignedOut={onSignedOut}
+          onSignedOut={() => {
+            setSettings(null);
+            toast("Signed out. Your notes stay on this device, without syncing.", { icon: "log-out" });
+          }}
         />
       )}
       {signingIn && (

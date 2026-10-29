@@ -3,7 +3,7 @@
 
 import { useState, type FormEvent } from "react";
 import { MIN_PASSWORD } from "@lumen/shared";
-import { AccountError } from "@lumen/shared/client";
+import { AccountError, AccountSwitchError } from "@lumen/shared/client";
 import { lumen } from "../db/client";
 import { Icon } from "./Icon";
 import { Segmented, TextInput } from "./ui";
@@ -25,20 +25,22 @@ export function AuthScreen({ onDone, onLater, onClose }: Props) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  // Someone else's offline changes are on this device and couldn't be sent yet.
+  const [blocked, setBlocked] = useState<AccountSwitchError>();
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: FormEvent, discardUnsent = false) => {
+    e?.preventDefault();
     if (busy) return;
     if (mode === "signup" && password.length < MIN_PASSWORD) return setError(`Use at least ${MIN_PASSWORD} characters for your password.`);
     setBusy(true);
     setError(undefined);
     try {
-      if (mode === "signup") await lumen.account.signUp({ name: name.trim(), email, password });
-      else await lumen.account.logIn({ email, password });
-      await lumen.connect();
+      if (mode === "signup") await lumen.signUp({ name: name.trim(), email, password }, { discardUnsent });
+      else await lumen.logIn({ email, password }, { discardUnsent });
       onDone();
     } catch (err) {
-      setError(err instanceof AccountError ? err.message : "Something went wrong. Try again.");
+      if (err instanceof AccountSwitchError) setBlocked(err);
+      else setError(err instanceof AccountError ? err.message : "Something went wrong. Try again.");
       setBusy(false);
     }
   };
@@ -93,6 +95,25 @@ export function AuthScreen({ onDone, onLater, onClose }: Props) {
         />
       </div>
 
+      {blocked && (
+        <div className="mt-4 rounded-2xl bg-hover p-3.5 text-[13px] leading-relaxed">
+          <p>
+            The notes on this device belong to <b>{blocked.owner}</b>, and {blocked.pending} of their{" "}
+            {blocked.pending === 1 ? "change hasn't" : "changes haven't"} reached their account yet. Connect to the internet and try again to keep{" "}
+            {blocked.pending === 1 ? "it" : "them"}.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setBlocked(undefined);
+              void submit(undefined, true);
+            }}
+            className="mt-2.5 rounded-lg px-2.5 py-1.5 font-medium text-danger hover:bg-active"
+          >
+            Discard {blocked.pending === 1 ? "it" : "them"} and continue
+          </button>
+        </div>
+      )}
       {error && (
         <p className="mt-3 flex items-start gap-2 text-[13px] text-danger">
           <Icon name="triangle-alert" size={15} className="mt-0.5 flex-none" />
