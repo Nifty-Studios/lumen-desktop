@@ -6,12 +6,18 @@ export function useLive<T>(load: () => Promise<T>, deps: unknown[]): T | undefin
   const [value, setValue] = useState<T>();
   useEffect(() => {
     let current = true;
-    const run = () => load().then((v) => current && setValue(v), console.error);
-    run();
+    let queued: ReturnType<typeof setTimeout> | undefined;
+    const now = () => load().then((v) => current && setValue(v), console.error);
+    // A burst of writes (typing, a sync pull) reloads once, not once per write.
+    const run = () => {
+      if (queued === undefined) queued = setTimeout(() => ((queued = undefined), now()), 60);
+    };
+    now();
     const offData = onChange(run);
     const offAccount = account.onChange(run);
     return () => {
       current = false;
+      clearTimeout(queued);
       offData();
       offAccount();
     };
