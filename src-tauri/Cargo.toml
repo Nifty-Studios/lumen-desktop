@@ -16,10 +16,15 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Bundled SQLite (FTS5 enabled), one connection, so batches run in real transactions.
 rusqlite = { version = "0.41", features = ["bundled"] }
+
+# Device location for the live sky (the same windows crate Tauri already builds).
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Devices_Geolocation", "Foundation"] }
 
 # https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

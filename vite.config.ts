@@ -11,7 +11,7 @@ export default defineConfig(() => ({
 
   resolve: {
     // @lumen/shared is linked from ../shared; use one copy of its peer libraries.
-    dedupe: ["drizzle-orm", "zod", "react", "react-dom"],
+    dedupe: ["drizzle-orm", "zod", "react", "react-dom", "@blocknote/core", "fflate"],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

@@ -17,6 +17,9 @@ importers:
       '@blocknote/react':
         specifier: ^0.56.0
         version: 0.56.0(@floating-ui/dom@1.8.0)(@types/hast@3.0.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@fontsource-variable/fraunces':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@lumen/shared':
         specifier: link:../shared
         version: link:../shared
@@ -29,12 +32,18 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.12.4
         version: 2.12.4
+      '@tauri-apps/plugin-dialog':
+        specifier: ^2.8.4
+        version: 2.8.4
       '@tauri-apps/plugin-opener':
         specifier: ^2
         version: 2.7.2
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -135,6 +144,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource-variable/fraunces@5.3.0':
+    resolution: {integrity: sha512-9BYGySn4AHEJdgp9Z28tQ3X+laJMEOITXkQarZXeloWQZDq5oOvXJ3kDA8c7MGIfpogIaZfjrQBqmda8POOCKA==}
 
   '@handlewithcare/prosemirror-inputrules@0.1.4':
     resolution: {integrity: sha512-GMqlBeG2MKM+tXEFd2N+wIv5z4VvJTg8JtfJUrdjvFq2W6v+AW8oTgiWyFw8L3iEQwvtQcVJxU873iB0LXUNNw==}
@@ -453,6 +465,9 @@ packages:
     engines: {node: '>= 10'}
     hasBin: true
 
+  '@tauri-apps/plugin-dialog@2.8.4':
+    resolution: {integrity: sha512-+6ZOiXenOaxXwb8qCbBPdT2jX2cFPaVVHGIskrpmJLpmWj+qKRTD6X/z9x7hTdSQn7NedcoXCkWGej4a7dC4lw==}
+
   '@tauri-apps/plugin-opener@2.7.2':
     resolution: {integrity: sha512-LyybP1VSzTMQiaFYcsbAse47KpivlyXdLZMQzGLEnkgQacGESnpjAfFoQ6h5sqWgAdZDH9szYjPzHMpv0Sz+TQ==}
 
@@ -734,6 +749,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -1354,6 +1372,8 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
+  '@fontsource-variable/fraunces@5.3.0': {}
+
   '@handlewithcare/prosemirror-inputrules@0.1.4(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-view@1.42.8)':
     dependencies:
       prosemirror-history: 1.5.1
@@ -1571,6 +1591,10 @@ snapshots:
       '@tauri-apps/cli-win32-ia32-msvc': 2.12.4
       '@tauri-apps/cli-win32-x64-msvc': 2.12.4
 
+  '@tauri-apps/plugin-dialog@2.8.4':
+    dependencies:
+      '@tauri-apps/api': 2.12.4
+
   '@tauri-apps/plugin-opener@2.7.2':
     dependencies:
       '@tauri-apps/api': 2.12.4
@@ -1739,6 +1763,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.3: {}
 
   fsevents@2.3.3:
     optional: true
