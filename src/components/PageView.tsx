@@ -3,18 +3,20 @@ import type { Block } from "@lumen/shared/schema/client";
 import { iconColor, resolveIcon } from "@lumen/shared/icons";
 import type { SyncStatus } from "@lumen/shared/client";
 import type { PageSession } from "../data/workspace";
-import { childPages, createPage, getBlock, getSpace, openPage, pagePath, pageTitle, renamePage, setPageAlive, setPageIcon } from "../data/workspace";
+import { childPages, createPage, getBlock, getSpace, openPage, pagePath, pageTitle, renamePage, roleOf, setPageAlive, setPageIcon } from "../data/workspace";
 import { useLive } from "../data/hooks";
 import { lumen } from "../db/client";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { Editor, type LumenEditor } from "./Editor";
 import { Icon } from "./Icon";
 import { IconPicker } from "./IconPicker";
+import { ShareDialog } from "./Share";
 import { MenuItem, Popover } from "./ui";
 
 interface Props {
   pageId: string;
   onOpen: (id: string) => void;
+  onSignIn: () => void;
 }
 
 /** Put the caret at the end of the page, adding an empty line if the last block has text. */
@@ -28,8 +30,10 @@ function focusEnd(editor: LumenEditor) {
   editor.focus();
 }
 
-export function PageView({ pageId, onOpen }: Props) {
+export function PageView({ pageId, onOpen, onSignIn }: Props) {
   const page = useLive(() => getBlock(pageId), [pageId]);
+  // Viewers read; everyone else edits. (Until it loads, assume they can.)
+  const readOnly = useLive(() => roleOf(pageId), [pageId]) === "viewer";
   const children = useLive(() => childPages(pageId), [pageId]) ?? [];
   const path = useLive(() => pagePath(pageId), [pageId]) ?? [];
   // The editor's blocks load once per page; after that the editor owns the document.
@@ -47,7 +51,7 @@ export function PageView({ pageId, onOpen }: Props) {
 
   return (
     <div ref={scroller} className="h-full overflow-y-auto" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 8)}>
-      <TopBar page={page} path={path} scrolled={scrolled} onOpen={onOpen} />
+      <TopBar page={page} path={path} scrolled={scrolled} readOnly={readOnly} onOpen={onOpen} onSignIn={onSignIn} />
       {!page.alive && (
         <div className="mx-auto mt-2 flex max-w-[720px] items-center gap-3 rounded-2xl bg-hover px-4 py-3 text-[13.5px]">
           <Icon name="trash" size={16} className="text-muted" />
@@ -61,20 +65,20 @@ export function PageView({ pageId, onOpen }: Props) {
         className="mx-auto max-w-[760px] px-16 pt-10"
         onMouseDown={(e) => {
           // Clicking the empty space around the text starts typing at the end.
-          if (e.target === e.currentTarget && editor) {
+          if (e.target === e.currentTarget && editor && !readOnly) {
             e.preventDefault();
             focusEnd(editor);
           }
         }}
       >
-        <Header page={page} words={words} childCount={children.length} onEnter={() => editor?.focus()} />
-        <Editor page={page} session={session} onReady={setEditor} onWords={setWords} />
+        <Header page={page} words={words} childCount={children.length} readOnly={readOnly} onEnter={() => editor?.focus()} />
+        <Editor page={page} session={session} editable={!readOnly} onReady={setEditor} onWords={setWords} />
         {children.length > 0 && <PagesInside pages={children} onOpen={onOpen} />}
       </div>
       <div
-        className="min-h-[42vh] cursor-text"
+        className={readOnly ? "min-h-[42vh]" : "min-h-[42vh] cursor-text"}
         onMouseDown={(e) => {
-          if (!editor) return;
+          if (!editor || readOnly) return;
           e.preventDefault();
           focusEnd(editor);
         }}
@@ -91,11 +95,22 @@ function useSyncStatus(): SyncStatus | undefined {
   return status;
 }
 
-function TopBar({ page, path, scrolled, onOpen }: { page: Block; path: Block[]; scrolled: boolean; onOpen: (id: string) => void }) {
+interface TopBarProps {
+  page: Block;
+  path: Block[];
+  scrolled: boolean;
+  readOnly: boolean;
+  onOpen: (id: string) => void;
+  onSignIn: () => void;
+}
+
+function TopBar({ page, path, scrolled, readOnly, onOpen, onSignIn }: TopBarProps) {
   const status = useSyncStatus();
   const [menu, setMenu] = useState<HTMLElement | null>(null);
+  const [sharing, setSharing] = useState(false);
   const crumbs = [...path, page];
-  const sync = !lumen.sync
+  const sync =
+    !lumen.sync || status?.state === "signed-out"
     ? { text: "On this device", dot: "bg-faint" }
     : status?.state === "syncing"
       ? { text: "Syncing", dot: "bg-accent animate-pulse" }
@@ -103,7 +118,9 @@ function TopBar({ page, path, scrolled, onOpen }: { page: Block; path: Block[]; 
         ? { text: "Offline · saved here", dot: "bg-faint" }
         : status?.state === "error"
           ? { text: "Sync paused", dot: "bg-danger" }
-          : { text: "Synced", dot: "bg-accent" };
+          : status?.live
+            ? { text: "Live", dot: "bg-accent" }
+            : { text: "Synced", dot: "bg-accent" };
 
   return (
     <div
@@ -133,6 +150,19 @@ function TopBar({ page, path, scrolled, onOpen }: { page: Block; path: Block[]; 
         <span className={`h-1.5 w-1.5 rounded-full ${sync.dot}`} />
         {sync.text}
       </span>
+      {readOnly && (
+        <span className="flex items-center gap-1.5 rounded-lg bg-hover px-2 py-1 text-[12px] text-muted">
+          <Icon name="eye" size={13} /> Can view
+        </span>
+      )}
+      {lumen.account.available && (
+        <button
+          onClick={() => setSharing(true)}
+          className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-muted transition-colors hover:bg-hover hover:text-fg"
+        >
+          <Icon name="share-2" size={15} /> Share
+        </button>
+      )}
       <button
         onClick={(e) => setMenu(menu ? null : e.currentTarget)}
         className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-hover hover:text-fg"
@@ -140,18 +170,32 @@ function TopBar({ page, path, scrolled, onOpen }: { page: Block; path: Block[]; 
       >
         <Icon name="ellipsis" size={18} />
       </button>
+      {sharing && (
+        <ShareDialog
+          page={page}
+          onClose={() => setSharing(false)}
+          onSignIn={() => {
+            setSharing(false);
+            onSignIn();
+          }}
+        />
+      )}
       {menu && (
         <Popover anchor={menu} onClose={() => setMenu(null)} align="end" width={220}>
-          <MenuItem
-            icon="plus"
-            label="Add a page inside"
-            onClick={async () => {
-              setMenu(null);
-              const space = await getSpace();
-              if (space) onOpen(await createPage(space, page.id));
-            }}
-          />
-          {page.alive ? (
+          {readOnly ? (
+            <div className="px-2.5 py-2 text-[13px] text-muted">You can view this page, not change it.</div>
+          ) : (
+            <MenuItem
+              icon="plus"
+              label="Add a page inside"
+              onClick={async () => {
+                setMenu(null);
+                const space = await getSpace();
+                if (space) onOpen(await createPage(space, page.id));
+              }}
+            />
+          )}
+          {readOnly ? null : page.alive ? (
             <MenuItem
               icon="trash"
               label="Move to trash"
@@ -188,7 +232,7 @@ const ago = (ms: number) => {
   return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(Math.round(s / size), unit);
 };
 
-function Header({ page, words, childCount, onEnter }: { page: Block; words: number; childCount: number; onEnter: () => void }) {
+function Header({ page, words, childCount, readOnly, onEnter }: { page: Block; words: number; childCount: number; readOnly: boolean; onEnter: () => void }) {
   const { theme } = useAmbient();
   const [picker, setPicker] = useState<HTMLElement | null>(null);
   const icon = page.format.icon ? resolveIcon(page.format.icon) : null;
@@ -198,6 +242,7 @@ function Header({ page, words, childCount, onEnter }: { page: Block; words: numb
     <div className="group/header mb-3">
       {icon ? (
         <button
+          disabled={readOnly}
           onClick={(e) => setPicker(e.currentTarget)}
           className="mb-4 grid h-16 w-16 place-items-center rounded-[20px] transition-transform hover:scale-105"
           style={{ background: tint ? `color-mix(in srgb, ${tint} 16%, transparent)` : "var(--hover)", color: tint ?? "var(--text)" }}
@@ -205,7 +250,7 @@ function Header({ page, words, childCount, onEnter }: { page: Block; words: numb
         >
           <Icon name={icon.name} size={32} strokeWidth={1.6} />
         </button>
-      ) : (
+      ) : readOnly ? null : (
         <button
           onClick={(e) => setPicker(e.currentTarget)}
           className="mb-3 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] text-faint opacity-0 transition-opacity group-hover/header:opacity-100 hover:bg-hover hover:text-muted"
@@ -224,7 +269,7 @@ function Header({ page, words, childCount, onEnter }: { page: Block; words: numb
           }}
         />
       )}
-      <Title page={page} onEnter={onEnter} />
+      <Title page={page} readOnly={readOnly} onEnter={onEnter} />
       <div className="mt-2 mb-6 flex items-center gap-2 text-[12.5px] text-faint">
         <span>Edited {ago(page.last_edited_time)}</span>
         <span>·</span>
@@ -244,11 +289,16 @@ function Header({ page, words, childCount, onEnter }: { page: Block; words: numb
   );
 }
 
-function Title({ page, onEnter }: { page: Block; onEnter: () => void }) {
-  const initial = pageTitle(page) === "Untitled" ? "" : pageTitle(page);
-  const [value, setValue] = useState(initial);
+function Title({ page, readOnly, onEnter }: { page: Block; readOnly: boolean; onEnter: () => void }) {
+  const stored = pageTitle(page) === "Untitled" ? "" : pageTitle(page);
+  const [value, setValue] = useState(stored);
   const timer = useRef<number>(undefined);
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  // A rename from another device shows up, unless this title is being typed in.
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setValue(stored);
+  }, [stored]);
 
   useEffect(() => {
     const el = ref.current;
@@ -258,7 +308,7 @@ function Title({ page, onEnter }: { page: Block; onEnter: () => void }) {
   }, [value]);
 
   useEffect(() => {
-    if (!initial) ref.current?.focus();
+    if (!stored && !readOnly) ref.current?.focus();
     return () => window.clearTimeout(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -268,6 +318,7 @@ function Title({ page, onEnter }: { page: Block; onEnter: () => void }) {
       ref={ref}
       rows={1}
       value={value}
+      readOnly={readOnly}
       placeholder="Untitled"
       className="font-serif block w-full resize-none overflow-hidden bg-transparent text-[42px] leading-[1.15] font-semibold tracking-[-0.015em] placeholder:text-faint"
       onChange={(e) => {

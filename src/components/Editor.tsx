@@ -5,7 +5,7 @@ import { en } from "@blocknote/core/locales";
 import type { BlockNoteEditor, PartialBlock } from "@blocknote/core";
 import type { Block } from "@lumen/shared/schema/client";
 import { isEditorBlock, toEditorBlock } from "@lumen/shared/editor";
-import { filterSlashItems, lumenSchema, slashItems, type SlashItem } from "@lumen/shared/editor/blocknote";
+import { applyRemoteUpdate, filterSlashItems, lumenSchema, slashItems, snapshot, type SlashItem, type Snapshot } from "@lumen/shared/editor/blocknote";
 import type { PageSession } from "../data/workspace";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { SlashMenu } from "./SlashMenu";
@@ -18,6 +18,8 @@ export type LumenEditor = BlockNoteEditor<typeof lumenSchema.blockSchema, typeof
 interface Props {
   page: Block;
   session: PageSession;
+  /** False for people who can only view the page. */
+  editable: boolean;
   onReady?: (editor: LumenEditor) => void;
   onWords?: (words: number) => void;
 }
@@ -53,7 +55,7 @@ const countWords = (editor: LumenEditor) => {
   return words;
 };
 
-export function Editor({ page, session, onReady, onWords }: Props) {
+export function Editor({ page, session, editable, onReady, onWords }: Props) {
   const { blocks } = session;
   const { theme } = useAmbient();
   const initialContent = useMemo(() => {
@@ -80,22 +82,39 @@ export function Editor({ page, session, onReady, onWords }: Props) {
   );
   const timer = useRef<number>(undefined);
   const dirty = useRef(false);
+  // The blocks as last saved or received; anything else in the editor is unsaved typing.
+  const known = useRef<Snapshot>(new Map());
+  const applyingRemote = useRef(false);
 
   const flush = () => {
     window.clearTimeout(timer.current);
     if (!dirty.current) return;
     dirty.current = false;
+    known.current = snapshot(editor);
     session.save(editor.document as never).catch(console.error);
   };
 
   useEffect(() => {
     onReady?.(editor);
     onWords?.(countWords(editor));
+    known.current = snapshot(editor);
+    // Other devices' edits show up as they arrive.
+    const offRemote = session.onRemote((update) => {
+      applyingRemote.current = true;
+      try {
+        known.current = applyRemoteUpdate(editor, update, known.current);
+      } finally {
+        applyingRemote.current = false;
+      }
+      onWords?.(countWords(editor));
+    });
     // Save when leaving the page or closing the window.
     window.addEventListener("beforeunload", flush);
     return () => {
+      offRemote();
       window.removeEventListener("beforeunload", flush);
       flush();
+      session.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -103,10 +122,12 @@ export function Editor({ page, session, onReady, onWords }: Props) {
   return (
     <BlockNoteView
       editor={editor}
+      editable={editable}
       theme={theme.dark ? "dark" : "light"}
       slashMenu={false}
       emojiPicker={false}
       onChange={() => {
+        if (applyingRemote.current) return;
         dirty.current = true;
         window.clearTimeout(timer.current);
         timer.current = window.setTimeout(() => {

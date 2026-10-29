@@ -10,8 +10,9 @@ import {
   type Place,
 } from "@lumen/shared/ambient";
 import type { IconName } from "@lumen/shared/icons";
-import type { ImportSummary } from "@lumen/shared/client";
+import { UnsyncedChangesError, type ImportSummary } from "@lumen/shared/client";
 import { lumen } from "../db/client";
+import { useAccount } from "../data/hooks";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { weatherIcon } from "../ambient/Clock";
 import { pickFile, saveBytes } from "../lib/files";
@@ -19,9 +20,10 @@ import { ambientSound } from "../lib/sound";
 import { Icon } from "./Icon";
 import { Button, Segmented, Toggle, useToast } from "./ui";
 
-export type SettingsSection = "appearance" | "environment" | "location" | "data" | "about";
+export type SettingsSection = "account" | "appearance" | "environment" | "location" | "data" | "about";
 
 const SECTIONS: { id: SettingsSection; label: string; icon: IconName }[] = [
+  { id: "account", label: "Account", icon: "circle-user" },
   { id: "appearance", label: "Appearance", icon: "palette" },
   { id: "environment", label: "Sky & mood", icon: "cloud-sun" },
   { id: "location", label: "Location & weather", icon: "map-pin" },
@@ -29,7 +31,14 @@ const SECTIONS: { id: SettingsSection; label: string; icon: IconName }[] = [
   { id: "about", label: "About", icon: "info" },
 ];
 
-export function Settings({ initial = "appearance", onClose }: { initial?: SettingsSection; onClose: () => void }) {
+interface SettingsProps {
+  initial?: SettingsSection;
+  onClose: () => void;
+  onSignIn: () => void;
+  onSignedOut: () => void;
+}
+
+export function Settings({ initial = "appearance", onClose, onSignIn, onSignedOut }: SettingsProps) {
   const [section, setSection] = useState<SettingsSection>(initial);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -59,6 +68,7 @@ export function Settings({ initial = "appearance", onClose }: { initial?: Settin
           <button onClick={onClose} className="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-xl text-muted hover:bg-hover hover:text-fg" aria-label="Close">
             <Icon name="x" size={18} />
           </button>
+          {section === "account" && <Account onSignIn={onSignIn} onSignedOut={onSignedOut} />}
           {section === "appearance" && <Appearance />}
           {section === "environment" && <Environment />}
           {section === "location" && <Location />}
@@ -440,6 +450,78 @@ function Data() {
   );
 }
 
+// ---- account -----------------------------------------------------------------------------
+
+function Account({ onSignIn, onSignedOut }: { onSignIn: () => void; onSignedOut: () => void }) {
+  const { user, available } = useAccount();
+  const [pending, setPending] = useState<number>();
+  const [busy, setBusy] = useState(false);
+
+  const signOut = async (force = false) => {
+    setBusy(true);
+    try {
+      await lumen.signOut({ force });
+      onSignedOut();
+    } catch (e) {
+      if (e instanceof UnsyncedChangesError) setPending(e.pending);
+      setBusy(false);
+    }
+  };
+
+  if (!available)
+    return (
+      <>
+        <Heading title="Account">This build of Lumen has no sync server, so everything stays on this device.</Heading>
+      </>
+    );
+  if (!user)
+    return (
+      <>
+        <Heading title="Account">
+          You're using Lumen on this device only. Sign in to sync your notes to your other devices, and to share pages with people.
+        </Heading>
+        <Button tone="primary" icon="log-in" onClick={onSignIn}>
+          Sign in or create an account
+        </Button>
+      </>
+    );
+  return (
+    <>
+      <Heading title="Account">Signed in. Your notes sync to every device you sign in on.</Heading>
+      <div className="mb-6 flex items-center gap-4 rounded-2xl bg-hover p-4">
+        <span className="grid h-12 w-12 place-items-center rounded-full bg-accent-soft text-[18px] font-semibold text-accent">{user.name[0]?.toUpperCase()}</span>
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-medium">{user.name}</div>
+          <div className="truncate text-[13px] text-muted">{user.email}</div>
+        </div>
+      </div>
+      {pending === undefined ? (
+        <>
+          <Button tone="soft" icon="log-out" disabled={busy} onClick={() => signOut()}>
+            Sign out of this device
+          </Button>
+          <p className="mt-2 max-w-[52ch] text-[12.5px] leading-relaxed text-muted">Signing out removes your notes from this device. They stay in your account.</p>
+        </>
+      ) : (
+        <div className="rounded-2xl bg-hover p-4">
+          <p className="mb-3 text-[13.5px] leading-relaxed">
+            {pending} {pending === 1 ? "change hasn't" : "changes haven't"} reached the server yet, probably because you're offline. Signing out now would lose{" "}
+            {pending === 1 ? "it" : "them"}.
+          </p>
+          <div className="flex gap-2">
+            <Button tone="soft" onClick={() => setPending(undefined)}>
+              Stay signed in
+            </Button>
+            <Button tone="danger" icon="log-out" disabled={busy} onClick={() => signOut(true)}>
+              Sign out anyway
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ---- about -------------------------------------------------------------------------------
 
 function About() {
@@ -454,7 +536,7 @@ function About() {
         <Field label="This device">
           <span className="font-mono text-[12px] text-muted">{lumen.store.deviceId.slice(-12)}</span>
         </Field>
-        <Field label="Sync" hint={lumen.sync ? "Your sync server is configured for this device." : "No sync server configured; notes stay on this device."}>
+        <Field label="Sync" hint={lumen.account.current ? "Signed in: changes sync to your other devices." : lumen.sync ? "Signed out: notes stay on this device." : "No sync server configured; notes stay on this device."}>
           <span className="text-muted">
             {!lumen.sync ? "Off" : status?.lastSyncedAt ? `Last synced ${new Date(status.lastSyncedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : status?.state ?? "Waiting"}
           </span>

@@ -1,37 +1,55 @@
 import { useEffect, useState } from "react";
-import type { Space } from "@lumen/shared/schema/client";
 import { lumen } from "./db/client";
-import { createPage, getSpace } from "./data/workspace";
+import { account, createPage, getSpace, listSpaces, setCurrentSpace } from "./data/workspace";
 import { useLive } from "./data/hooks";
 import { AmbientProvider } from "./ambient/AmbientProvider";
 import { Sky } from "./ambient/Sky";
+import { AuthScreen } from "./components/Auth";
 import { Sidebar } from "./components/Sidebar";
 import { PageView } from "./components/PageView";
 import { SearchDialog } from "./components/SearchDialog";
 import { Settings, type SettingsSection } from "./components/Settings";
 import { Icon } from "./components/Icon";
-import { ToastProvider } from "./components/ui";
+import { ToastProvider, useToast } from "./components/ui";
 
-type Boot = { state: "loading" } | { state: "error"; message: string } | { state: "ready"; space: Space };
+type Boot = { state: "loading" } | { state: "error"; message: string } | { state: "auth" } | { state: "ready" };
 
 export default function App() {
   const [boot, setBoot] = useState<Boot>({ state: "loading" });
 
   useEffect(() => {
-    (async () => {
-      setBoot({ state: "ready", space: await lumen.start() });
-    })().catch((e) => setBoot({ state: "error", message: String(e) }));
+    lumen.start().then(
+      ({ needsAuth }) => setBoot({ state: needsAuth ? "auth" : "ready" }),
+      (e) => setBoot({ state: "error", message: String(e) }),
+    );
   }, []);
 
-  // Background sync once started: on an interval, after edits, and when the window regains focus.
+  // Background sync once started: on an interval, after edits, and when the window regains
+  // focus; plus a live socket while the window is visible, so other devices' edits arrive at once.
   useEffect(() => {
-    if (boot.state !== "ready" || !lumen.sync) return;
-    const stop = lumen.sync.start();
-    const onFocus = () => void lumen.sync?.sync().catch(() => {});
+    const sync = lumen.sync;
+    if (boot.state !== "ready" || !sync) return;
+    const stop = sync.start();
+    let closeLive: (() => void) | undefined;
+    const updateLive = () => {
+      const want = document.visibilityState === "visible" && !!account.current;
+      if (want && !closeLive) closeLive = sync.live();
+      if (!want && closeLive) {
+        closeLive();
+        closeLive = undefined;
+      }
+    };
+    updateLive();
+    const onFocus = () => void sync.sync().catch(() => {});
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", updateLive);
+    const offAccount = account.onChange(updateLive);
     return () => {
       stop();
+      closeLive?.();
+      offAccount();
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", updateLive);
     };
   }, [boot.state]);
 
@@ -42,25 +60,60 @@ export default function App() {
     <AmbientProvider>
       <ToastProvider>
         <Sky />
-        <Workspace initial={boot.space} />
+        {boot.state === "auth" ? (
+          <AuthScreen
+            onDone={() => setBoot({ state: "ready" })}
+            onLater={async () => {
+              await lumen.continueSignedOut();
+              setBoot({ state: "ready" });
+            }}
+          />
+        ) : (
+          <Workspace onSignedOut={() => setBoot({ state: "auth" })} />
+        )}
       </ToastProvider>
     </AmbientProvider>
   );
 }
 
-function Workspace({ initial }: { initial: Space }) {
-  const space = useLive(async () => (await getSpace()) ?? initial, []) ?? initial;
-  const [pageId, setPageId] = useState<string | null>(initial.pages[0] ?? null);
+function Workspace({ onSignedOut }: { onSignedOut: () => void }) {
+  // Bumped when the workspace is switched (a device-local choice, not a data change).
+  const [picked, setPicked] = useState(0);
+  const space = useLive(getSpace, [picked]);
+  const role = useLive(async () => (await listSpaces()).find((s) => s.space.id === space?.id)?.role, [space?.id]);
+  const [pageId, setPageId] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [settings, setSettings] = useState<SettingsSection | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
   const [sidebar, setSidebar] = useState(true);
+  const toast = useToast();
+
+  // A different workspace (switched, or after signing in): start at its first page.
+  useEffect(() => {
+    if (space) setPageId(space.pages[0] ?? null);
+  }, [space?.id]);
+
+  useEffect(() => {
+    const offRejected = lumen.onSyncRejected(() =>
+      toast("Some changes weren't saved: you can only view that page now.", { tone: "error", icon: "lock" }),
+    );
+    let wasSignedIn = !!account.current;
+    const offAccount = account.onChange(() => {
+      if (wasSignedIn && !account.current && !account.skipped) toast("You were signed out. Sign in again to keep syncing.", { tone: "error", icon: "log-out" });
+      wasSignedIn = !!account.current;
+    });
+    return () => {
+      offRejected();
+      offAccount();
+    };
+  }, [toast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const key = e.key.toLowerCase();
       if (key === "k" || key === "p") setSearching(true);
-      else if (key === "n") createPage(space, null).then(setPageId);
+      else if (key === "n") space && role !== "viewer" && createPage(space, null).then(setPageId);
       else if (key === ",") setSettings("appearance");
       else if (key === "\\") setSidebar((v) => !v);
       else return;
@@ -68,18 +121,26 @@ function Workspace({ initial }: { initial: Space }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [space]);
+  }, [space, role]);
+
+  if (!space) return null;
 
   return (
     <div className="relative z-10 flex h-full gap-3 px-3.5 pt-14 pb-3.5">
       {sidebar && (
         <Sidebar
           space={space}
+          role={role}
           currentId={pageId}
           onOpen={setPageId}
           onSearch={() => setSearching(true)}
           onSettings={(s) => setSettings((s as SettingsSection) ?? "appearance")}
           onCollapse={() => setSidebar(false)}
+          onSwitchSpace={async (id) => {
+            await setCurrentSpace(id);
+            setPicked((n) => n + 1);
+          }}
+          onSignIn={() => setSigningIn(true)}
         />
       )}
       <main className="sheet min-w-0 flex-1 overflow-hidden rounded-[22px]">
@@ -93,12 +154,14 @@ function Workspace({ initial }: { initial: Space }) {
           </button>
         )}
         {pageId ? (
-          <PageView key={pageId} pageId={pageId} onOpen={setPageId} />
+          <PageView key={pageId} pageId={pageId} onOpen={setPageId} onSignIn={() => setSigningIn(true)} />
         ) : (
           <div className="grid h-full place-items-center text-muted">
-            <button className="flex items-center gap-2 rounded-xl px-3 py-2 hover:bg-hover" onClick={() => createPage(space, null).then(setPageId)}>
-              <Icon name="plus" size={16} /> New page
-            </button>
+            {role !== "viewer" && (
+              <button className="flex items-center gap-2 rounded-xl px-3 py-2 hover:bg-hover" onClick={() => createPage(space, null).then(setPageId)}>
+                <Icon name="plus" size={16} /> New page
+              </button>
+            )}
           </div>
         )}
       </main>
@@ -111,7 +174,27 @@ function Workspace({ initial }: { initial: Space }) {
           }}
         />
       )}
-      {settings && <Settings initial={settings} onClose={() => setSettings(null)} />}
+      {settings && (
+        <Settings
+          initial={settings}
+          onClose={() => setSettings(null)}
+          onSignIn={() => {
+            setSettings(null);
+            setSigningIn(true);
+          }}
+          onSignedOut={onSignedOut}
+        />
+      )}
+      {signingIn && (
+        <AuthScreen
+          onClose={() => setSigningIn(false)}
+          onDone={() => {
+            setSigningIn(false);
+            setPicked((n) => n + 1);
+            toast("Signed in. Your notes are syncing.", { icon: "cloud" });
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // Small UI pieces. No borders or focus rings anywhere: depth comes from glass, shadow and
 // soft fills.
 
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { IconName } from "@lumen/shared/icons";
 import { Icon } from "./Icon";
@@ -144,6 +144,16 @@ export function Button({
       {icon && <Icon name={icon} size={16} />}
       {children}
     </button>
+  );
+}
+
+/** A text field: a soft fill that deepens on focus, never an outline. */
+export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={`w-full rounded-xl bg-hover px-3.5 py-2.5 text-[14px] transition-colors placeholder:text-faint focus:bg-active ${props.className ?? ""}`}
+    />
   );
 }
 

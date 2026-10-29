@@ -1,21 +1,30 @@
 import { useEffect, useState } from "react";
-import { onChange } from "./workspace";
+import { account, onChange } from "./workspace";
 
-/** Runs `load` now and again after every local write. */
+/** Runs `load` now and again after every write and whenever the account or its access changes. */
 export function useLive<T>(load: () => Promise<T>, deps: unknown[]): T | undefined {
   const [value, setValue] = useState<T>();
   useEffect(() => {
     let current = true;
     const run = () => load().then((v) => current && setValue(v), console.error);
     run();
-    const off = onChange(run);
+    const offData = onChange(run);
+    const offAccount = account.onChange(run);
     return () => {
       current = false;
-      off();
+      offData();
+      offAccount();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   return value;
+}
+
+/** The signed-in account (or undefined), kept current. */
+export function useAccount() {
+  const [, render] = useState(0);
+  useEffect(() => account.onChange(() => render((n) => n + 1)), []);
+  return { user: account.current?.user, access: account.access, reminderDue: account.reminderDue(), available: account.available };
 }
 
 export function useColorScheme(): "light" | "dark" {
