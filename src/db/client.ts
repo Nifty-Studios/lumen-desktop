@@ -8,4 +8,8 @@ const driver: SqlDriver = {
   batch: (queries) => invoke<unknown[][]>("db_batch", { queries }),
 };
 
-export const lumen = createLumen(driver);
+// Sync is on when the server is configured (desktop/.env.local, not committed).
+const url = import.meta.env.VITE_LUMEN_SERVER as string | undefined;
+const token = import.meta.env.VITE_LUMEN_TOKEN as string | undefined;
+
+export const lumen = createLumen(driver, { sync: url && token ? { url, token } : undefined });

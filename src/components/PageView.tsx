@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Block } from "@lumen/shared/schema/client";
-import { getBlock, loadPageBlocks, pageTitle, renamePage, setPageAlive, setPageIcon } from "../data/workspace";
+import type { PageSession } from "../data/workspace";
+import { getBlock, openPage, pageTitle, renamePage, setPageAlive, setPageIcon } from "../data/workspace";
 import { useLive } from "../data/hooks";
 import { Editor } from "./Editor";
 
@@ -9,12 +10,12 @@ const EMOJIS = ["📄", "📝", "📌", "💡", "✅", "📚", "🎯", "🗂", "
 export function PageView({ pageId }: { pageId: string }) {
   const page = useLive(() => getBlock(pageId), [pageId]);
   // The editor's blocks load once per page; after that the editor owns the document.
-  const [blocks, setBlocks] = useState<Map<string, Block>>();
+  const [session, setSession] = useState<PageSession>();
   useEffect(() => {
-    loadPageBlocks(pageId).then(setBlocks, console.error);
+    openPage(pageId).then(setSession, console.error);
   }, [pageId]);
 
-  if (!page || !blocks) return null;
+  if (!page || !session) return null;
 
   if (!page.alive)
     return (
@@ -32,7 +33,7 @@ export function PageView({ pageId }: { pageId: string }) {
     <div className="mx-auto max-w-3xl px-16 pt-16 pb-40">
       <IconPicker page={page} />
       <Title page={page} />
-      <Editor page={page} blocks={blocks} />
+      <Editor page={page} session={session} />
     </div>
   );
 }

@@ -1,12 +1,11 @@
 import { lumen } from "../db/client";
 
-export { pageTitle, type PageNode, type SearchHit } from "@lumen/shared/client";
+export { pageTitle, type PageNode, type PageSession, type SearchHit } from "@lumen/shared/client";
 export const {
   getSpace,
   pageTree,
   getBlock,
-  loadPageBlocks,
-  savePage,
+  openPage,
   createPage,
   renamePage,
   setPageIcon,

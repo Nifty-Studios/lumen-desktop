@@ -18,6 +18,18 @@ export default function App() {
     })().catch((e) => setBoot({ state: "error", message: String(e) }));
   }, []);
 
+  // Background sync once started: on an interval, after edits, and when the window regains focus.
+  useEffect(() => {
+    if (boot.state !== "ready" || !lumen.sync) return;
+    const stop = lumen.sync.start();
+    const onFocus = () => void lumen.sync?.sync().catch(() => {});
+    window.addEventListener("focus", onFocus);
+    return () => {
+      stop();
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [boot.state]);
+
   if (boot.state === "loading") return null;
   if (boot.state === "error")
     return <pre className="p-6 text-sm text-red-600 whitespace-pre-wrap">Lumen could not start: {boot.message}</pre>;

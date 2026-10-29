@@ -4,17 +4,18 @@ import { BlockNoteView } from "@blocknote/mantine";
 import type { PartialBlock } from "@blocknote/core";
 import type { Block } from "@lumen/shared/schema/client";
 import { toEditorBlock, isEditorBlock } from "@lumen/shared/editor";
-import { savePage } from "../data/workspace";
+import type { PageSession } from "../data/workspace";
 import { useColorScheme } from "../data/hooks";
 
 const SAVE_DELAY = 400;
 
 interface Props {
   page: Block;
-  blocks: Map<string, Block>;
+  session: PageSession;
 }
 
-export function Editor({ page, blocks }: Props) {
+export function Editor({ page, session }: Props) {
+  const { blocks } = session;
   const scheme = useColorScheme();
   const initialContent = useMemo(() => {
     const top = page.content
@@ -34,7 +35,7 @@ export function Editor({ page, blocks }: Props) {
     window.clearTimeout(timer.current);
     if (!dirty.current) return;
     dirty.current = false;
-    savePage(page.id, editor.document).catch(console.error);
+    session.save(editor.document).catch(console.error);
   };
 
   // Save when leaving the page or closing the window.
