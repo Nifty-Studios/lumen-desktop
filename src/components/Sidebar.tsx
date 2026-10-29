@@ -3,7 +3,22 @@ import { canEdit, type Role } from "@lumen/shared";
 import type { Space } from "@lumen/shared/schema/client";
 import { iconColor, resolveIcon, type IconName } from "@lumen/shared/icons";
 import { useAccount, useLive } from "../data/hooks";
-import { account, createPage, listSpaces, pageTitle, pageTree, setPageAlive, sharedPages, trashedPages, type PageNode } from "../data/workspace";
+import {
+  account,
+  createGroup,
+  createPage,
+  isGroup,
+  listSpaces,
+  movePage,
+  pageTitle,
+  pageTree,
+  renamePage,
+  setPageAlive,
+  sharedPages,
+  trashedPages,
+  type PageNode,
+} from "../data/workspace";
+import { MoveMenu } from "./MoveMenu";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { Clock } from "../ambient/Clock";
 import { Icon } from "./Icon";
@@ -50,18 +65,33 @@ export function Sidebar({ space, role, currentId, onOpen, onSearch, onSettings, 
         <div className="group/pages flex items-center justify-between px-1.5 pt-2 pb-1">
           <span className="text-[11px] font-medium tracking-[0.14em] text-faint uppercase">Pages</span>
           {editable && (
-            <button
-              className="grid h-6 w-6 place-items-center rounded-md text-faint opacity-0 transition-opacity group-hover/pages:opacity-100 hover:bg-hover hover:text-fg"
-              onClick={() => createPage(space, null).then(onOpen)}
-              aria-label="New page"
-            >
-              <Icon name="plus" size={15} />
-            </button>
+            <span className="flex gap-0.5 opacity-0 transition-opacity group-hover/pages:opacity-100">
+              <button
+                className="grid h-6 w-6 place-items-center rounded-md text-faint hover:bg-hover hover:text-fg"
+                onClick={() => createGroup(space, "New group")}
+                aria-label="New group"
+                title="New group"
+              >
+                <Icon name="folder" size={14} />
+              </button>
+              <button
+                className="grid h-6 w-6 place-items-center rounded-md text-faint hover:bg-hover hover:text-fg"
+                onClick={() => createPage(space, null).then(onOpen)}
+                aria-label="New page"
+                title="New page"
+              >
+                <Icon name="plus" size={15} />
+              </button>
+            </span>
           )}
         </div>
-        {tree.map((node) => (
-          <TreeItem key={node.page.id} node={node} depth={0} space={space} editable={editable} currentId={currentId} onOpen={onOpen} />
-        ))}
+        {tree.map((node) =>
+          isGroup(node.page) ? (
+            <GroupItem key={node.page.id} node={node} space={space} editable={editable} currentId={currentId} onOpen={onOpen} />
+          ) : (
+            <TreeItem key={node.page.id} node={node} depth={0} space={space} editable={editable} currentId={currentId} onOpen={onOpen} />
+          ),
+        )}
         {!tree.length && <div className="px-3 py-2 text-muted">No pages yet</div>}
 
         {shared.length > 0 && (
@@ -219,9 +249,72 @@ interface ItemProps {
   onOpen: (id: string) => void;
 }
 
+/** A group: a collapsible section header over its pages. Double-click the name to rename it. */
+function GroupItem({ node, space, editable, currentId, onOpen }: Omit<ItemProps, "depth">) {
+  const { page, children } = node;
+  const [open, setOpen] = useState(true);
+  const [naming, setNaming] = useState(pageTitle(page) === "New group" && editable);
+  return (
+    <div className="mt-2">
+      <div className="group flex h-8 items-center gap-1 rounded-xl pr-1 text-faint hover:bg-hover" onClick={() => setOpen((v) => !v)}>
+        <span className="grid h-6 w-6 place-items-center">
+          <Icon name="chevron-right" size={13} style={{ transform: open ? "rotate(90deg)" : undefined, transition: "transform 150ms" }} />
+        </span>
+        {naming ? (
+          <input
+            autoFocus
+            defaultValue={pageTitle(page) === "New group" ? "" : pageTitle(page)}
+            placeholder="Group name"
+            onClick={(e) => e.stopPropagation()}
+            onBlur={(e) => {
+              if (e.target.value.trim()) renamePage(page.id, e.target.value.trim());
+              setNaming(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
+            }}
+            className="min-w-0 flex-1 rounded-md bg-hover px-1.5 py-0.5 text-[12px] font-medium tracking-[0.08em] text-fg uppercase"
+          />
+        ) : (
+          <span
+            className="flex-1 truncate text-[11.5px] font-medium tracking-[0.12em] uppercase"
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              if (editable) setNaming(true);
+            }}
+          >
+            {pageTitle(page)}
+          </span>
+        )}
+        {editable && (
+          <span className="hidden gap-0.5 group-hover:flex">
+            <SmallButton label="Add a page to this group" icon="plus" onClick={() => createPage(space, page.id).then(onOpen)} />
+            <SmallButton label="Rename group" icon="pencil" onClick={() => setNaming(true)} />
+            <SmallButton
+              label="Remove group (its pages stay)"
+              icon="trash"
+              onClick={async () => {
+                for (const c of children) await movePage(c.page.id, null);
+                await setPageAlive(page.id, false);
+              }}
+            />
+          </span>
+        )}
+      </div>
+      {open &&
+        (children.length ? (
+          children.map((c) => <TreeItem key={c.page.id} node={c} depth={0} space={space} editable={editable} currentId={currentId} onOpen={onOpen} />)
+        ) : (
+          <div className="py-1 pl-8 text-[12px] text-faint">Empty · use “Move to” on a page</div>
+        ))}
+    </div>
+  );
+}
+
 function TreeItem({ node, depth, space, editable, currentId, onOpen }: ItemProps) {
   const { theme } = useAmbient();
   const [open, setOpen] = useState(false);
+  const [moving, setMoving] = useState<HTMLElement | null>(null);
   const { page, children } = node;
   const icon = resolveIcon(page.format.icon);
   const active = page.id === currentId;
@@ -256,9 +349,11 @@ function TreeItem({ node, depth, space, editable, currentId, onOpen }: ItemProps
               })
             }
           />
+          <SmallButton label="Move to…" icon="folder" onClick={(el) => setMoving(el)} />
           <SmallButton label="Move to trash" icon="trash" onClick={() => setPageAlive(page.id, false)} />
         </span>
       </div>
+      {moving && <MoveMenu anchor={moving} page={page} space={space} onClose={() => setMoving(null)} />}
       {open &&
         (children.length ? (
           children.map((c) => <TreeItem key={c.page.id} node={c} depth={depth + 1} space={space} editable={editable} currentId={currentId} onOpen={onOpen} />)
@@ -271,7 +366,7 @@ function TreeItem({ node, depth, space, editable, currentId, onOpen }: ItemProps
   );
 }
 
-function SmallButton({ label, icon, onClick }: { label: string; icon: IconName; onClick: () => void }) {
+function SmallButton({ label, icon, onClick }: { label: string; icon: IconName; onClick: (el: HTMLElement) => void }) {
   return (
     <button
       title={label}
@@ -279,7 +374,7 @@ function SmallButton({ label, icon, onClick }: { label: string; icon: IconName; 
       className="grid h-6 w-6 place-items-center rounded-md text-faint hover:bg-hover hover:text-fg"
       onClick={(e) => {
         e.stopPropagation();
-        onClick();
+        onClick(e.currentTarget);
       }}
     >
       <Icon name={icon} size={14} />

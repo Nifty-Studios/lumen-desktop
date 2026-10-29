@@ -1,6 +1,6 @@
 import { lumen } from "../db/client";
 
-export { pageTitle, type PageNode, type PageSession, type RemoteUpdate, type SearchHit } from "@lumen/shared/client";
+export { isGroup, pageTitle, type PageNode, type PageSession, type RemoteUpdate, type SearchHit } from "@lumen/shared/client";
 export const {
   account,
   getSpace,
@@ -14,6 +14,8 @@ export const {
   pagePath,
   openPage,
   createPage,
+  createGroup,
+  movePage,
   renamePage,
   setPageIcon,
   setPageAlive,

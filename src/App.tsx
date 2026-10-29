@@ -11,6 +11,7 @@ import { SearchDialog } from "./components/SearchDialog";
 import { Settings, type SettingsSection } from "./components/Settings";
 import { Icon } from "./components/Icon";
 import { ToastProvider, useToast } from "./components/ui";
+import { notify } from "./lib/notify";
 
 type Boot = { state: "loading" } | { state: "error"; message: string } | { state: "auth" } | { state: "ready" };
 
@@ -94,6 +95,10 @@ function Workspace() {
   }, [space?.id]);
 
   useEffect(() => {
+    const offNotice = lumen.onNotice((n) => {
+      void notify(n);
+      toast(`${n.title}: ${n.body}`, { icon: "users" });
+    });
     const offRejected = lumen.onSyncRejected(() =>
       toast("Some changes weren't saved: you can only view that page now.", { tone: "error", icon: "lock" }),
     );
@@ -103,6 +108,7 @@ function Workspace() {
       wasSignedIn = !!account.current;
     });
     return () => {
+      offNotice();
       offRejected();
       offAccount();
     };

@@ -21,6 +21,7 @@
     "@mantine/hooks": "^9.0.2",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.4",
+    "@tauri-apps/plugin-notification": "^2.8.0",
     "@tauri-apps/plugin-opener": "^2",
     "drizzle-orm": "^0.45.4",
     "fflate": "^0.8.3",

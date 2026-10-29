@@ -20,10 +20,11 @@ import { ambientSound } from "../lib/sound";
 import { Icon } from "./Icon";
 import { Button, Segmented, Toggle, useToast } from "./ui";
 
-export type SettingsSection = "account" | "appearance" | "environment" | "location" | "data" | "about";
+export type SettingsSection = "account" | "ai" | "appearance" | "environment" | "location" | "data" | "about";
 
 const SECTIONS: { id: SettingsSection; label: string; icon: IconName }[] = [
   { id: "account", label: "Account", icon: "circle-user" },
+  { id: "ai", label: "AI connection", icon: "wand-sparkles" },
   { id: "appearance", label: "Appearance", icon: "palette" },
   { id: "environment", label: "Sky & mood", icon: "cloud-sun" },
   { id: "location", label: "Location & weather", icon: "map-pin" },
@@ -69,6 +70,7 @@ export function Settings({ initial = "appearance", onClose, onSignIn, onSignedOu
             <Icon name="x" size={18} />
           </button>
           {section === "account" && <Account onSignIn={onSignIn} onSignedOut={onSignedOut} />}
+          {section === "ai" && <AiConnection onSignIn={onSignIn} />}
           {section === "appearance" && <Appearance />}
           {section === "environment" && <Environment />}
           {section === "location" && <Location />}
@@ -497,6 +499,112 @@ function Account({ onSignIn, onSignedOut }: { onSignIn: () => void; onSignedOut:
         Your notes stay on this device and keep working offline; they just stop syncing. If someone else signs in here, your unsent changes go to
         your account first, and then the device holds only their notes.
       </p>
+    </>
+  );
+}
+
+// ---- AI connection -------------------------------------------------------------------------
+
+function AiConnection({ onSignIn }: { onSignIn: () => void }) {
+  const { user } = useAccount();
+  const toast = useToast();
+  const [links, setLinks] = useState<{ id: string; created_at: number; last_used_at: number }[]>();
+  const [fresh, setFresh] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (user) lumen.account.aiLinks().then(setLinks, () => setLinks([]));
+  }, [user]);
+
+  if (!user)
+    return (
+      <>
+        <Heading title="AI connection">Let Claude or another assistant read, answer questions about, write and sort your notes. It needs an account.</Heading>
+        <Button tone="primary" icon="log-in" onClick={onSignIn}>
+          Sign in or create an account
+        </Button>
+      </>
+    );
+
+  const create = async () => {
+    setBusy(true);
+    try {
+      const url = await lumen.account.createAiLink();
+      setFresh(url);
+      setLinks(await lumen.account.aiLinks());
+    } catch (e) {
+      toast(String(e), { tone: "error" });
+    }
+    setBusy(false);
+  };
+
+  return (
+    <>
+      <Heading title="AI connection">
+        A private link that lets Claude (or any assistant that supports MCP) read your notes, answer questions about them, add notes, and sort pages into groups.
+        Its changes show up here within seconds.
+      </Heading>
+
+      {fresh ? (
+        <div className="mb-5 rounded-2xl bg-accent-soft p-4">
+          <div className="mb-2 text-[13px] font-medium">Your new link (shown once; keep it private)</div>
+          <div className="flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg bg-surface px-2.5 py-2 text-[12px]">{fresh}</code>
+            <Button
+              tone="primary"
+              icon="copy"
+              onClick={async () => {
+                await navigator.clipboard.writeText(fresh);
+                toast("Link copied", { icon: "copy" });
+              }}
+            >
+              Copy
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-5">
+          <Button tone="primary" icon="link" disabled={busy} onClick={create}>
+            Create a link
+          </Button>
+        </div>
+      )}
+
+      <div className="mb-6 space-y-2 text-[13.5px] leading-relaxed text-muted">
+        <p className="font-medium text-fg">Connect Claude</p>
+        <p>
+          <b className="text-fg">claude.ai, the Claude app on your phone, or Claude Desktop:</b> Settings → Connectors → Add custom connector. Name it “Lumen” and paste the link.
+          Connectors you add on claude.ai also work in the phone app.
+        </p>
+        <p>
+          <b className="text-fg">Claude Code:</b> <code className="rounded bg-hover px-1.5 py-0.5 text-[12px]">claude mcp add --transport http lumen &lt;link&gt;</code>
+        </p>
+        <p>Then ask things like “What did I note about the trip?”, “Add milk to my groceries page”, or “Sort my pages into groups”.</p>
+      </div>
+
+      {links && links.length > 0 && (
+        <>
+          <div className="mb-2 text-[11px] font-medium tracking-[0.14em] text-faint uppercase">Active links</div>
+          {links.map((l) => (
+            <div key={l.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-hover">
+              <Icon name="link" size={15} className="text-muted" />
+              <span className="flex-1 text-[13px]">
+                Created {new Date(l.created_at).toLocaleDateString()} · used {new Date(l.last_used_at).toLocaleDateString()}
+              </span>
+              <button
+                onClick={async () => {
+                  await lumen.account.revokeAiLink(l.id);
+                  setLinks(await lumen.account.aiLinks());
+                  setFresh(undefined);
+                }}
+                className="rounded-lg px-2.5 py-1 text-[12.5px] text-danger hover:bg-active"
+              >
+                Revoke
+              </button>
+            </div>
+          ))}
+        </>
+      )}
     </>
   );
 }
