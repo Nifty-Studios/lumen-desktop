@@ -271,3 +271,10 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Misspelled words (shared/editor/spellcheck.ts): a soft red squiggle, never an outline. */
+::highlight(lumen-misspelled) {
+  text-decoration: underline wavy var(--danger);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}

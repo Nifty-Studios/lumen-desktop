@@ -10,6 +10,7 @@ import { account, listSpaces, pageTitle } from "../data/workspace";
 import { useAccount, useLive } from "../data/hooks";
 import { Icon } from "./Icon";
 import { Segmented, TextInput } from "./ui";
+import { useFriends } from "./Settings";
 
 type Tab = "page" | "workspace";
 
@@ -25,6 +26,7 @@ export function ShareDialog({ page, onClose, onSignIn }: { page: Block; onClose:
   const [role, setRole] = useState<Role>("editor");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [friends] = useFriends();
 
   const canManage = tab === "page" ? canEdit(space?.role) : space?.role === "owner";
   const roles: Role[] = tab === "page" ? ["editor", "viewer"] : ["owner", "editor", "viewer"];
@@ -59,15 +61,16 @@ export function ShareDialog({ page, onClose, onSignIn }: { page: Block; onClose:
     }
   };
 
+  // The name goes along so the other person's notification can say what was shared.
+  const title = tab === "page" ? pageTitle(page) : (space?.space.name ?? "");
+  const shareWith = (to: string, r: Role) =>
+    run(() => (tab === "page" ? account.sharePage(page.id, { email: to, role: r === "viewer" ? "viewer" : "editor", title }) : account.invite(page.space_id, { email: to, role: r, title })));
   const invite = async (e: FormEvent) => {
     e.preventDefault();
-    const ok = await run(() =>
-      tab === "page" ? account.sharePage(page.id, { email, role: role === "viewer" ? "viewer" : "editor" }) : account.invite(page.space_id, { email, role }),
-    );
-    if (ok) setEmail("");
+    if (await shareWith(email.trim(), role)) setEmail("");
   };
-  const change = (p: Person, next: Role) =>
-    run(() => (tab === "page" ? account.sharePage(page.id, { email: p.email, role: next === "viewer" ? "viewer" : "editor" }) : account.invite(page.space_id, { email: p.email, role: next })));
+  const suggestions = (friends ?? []).filter((f) => f.status === "accepted" && !people?.some((p) => p.email === f.user.email));
+  const change = (p: Person, next: Role) => shareWith(p.email, next);
   const remove = (p: Person) => run(() => (tab === "page" ? account.unsharePage(page.id, p.email) : account.removeMember(page.space_id, p.email)));
 
   return (
@@ -123,6 +126,25 @@ export function ShareDialog({ page, onClose, onSignIn }: { page: Block; onClose:
                     <Icon name="user-plus" size={16} /> Invite
                   </button>
                 </div>
+                {suggestions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="mr-0.5 text-[12px] text-faint">Friends</span>
+                    {suggestions.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void shareWith(f.user.email, role)}
+                        title={`Share with ${f.user.email} (${ROLE_LABEL[role].toLowerCase()})`}
+                        className="flex items-center gap-1.5 rounded-full bg-hover py-1 pr-2.5 pl-1 text-[12.5px] transition-colors hover:bg-active disabled:opacity-50"
+                      >
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-accent-soft text-[11px] font-semibold text-accent">{f.user.name[0]?.toUpperCase()}</span>
+                        {f.user.name}
+                        <Icon name="plus" size={12} className="text-faint" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </form>
             ) : (
               <p className="mt-4 rounded-xl bg-hover px-3.5 py-2.5 text-[13px] text-muted">

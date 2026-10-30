@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  ACCENT_PRESETS,
   ENV_TIMES,
   ENV_WEATHERS,
   MOODS,
@@ -10,7 +11,8 @@ import {
   type Place,
 } from "@lumen/shared/ambient";
 import type { IconName } from "@lumen/shared/icons";
-import type { ImportSummary } from "@lumen/shared/client";
+import { AccountError, type ImportSummary } from "@lumen/shared/client";
+import type { Friend } from "@lumen/shared";
 import { getVersion } from "@tauri-apps/api/app";
 import { lumen } from "../db/client";
 import { useAccount } from "../data/hooks";
@@ -19,14 +21,16 @@ import { weatherIcon } from "../ambient/Clock";
 import { pickFile, saveBytes } from "../lib/files";
 import { ambientSound } from "../lib/sound";
 import { Icon } from "./Icon";
-import { Button, Segmented, Toggle, useToast } from "./ui";
+import { Button, Segmented, TextInput, Toggle, useToast } from "./ui";
 
-export type SettingsSection = "account" | "ai" | "appearance" | "environment" | "location" | "data" | "about";
+export type SettingsSection = "account" | "friends" | "ai" | "appearance" | "dictionary" | "environment" | "location" | "data" | "about";
 
 const SECTIONS: { id: SettingsSection; label: string; icon: IconName }[] = [
   { id: "account", label: "Account", icon: "circle-user" },
+  { id: "friends", label: "Friends", icon: "users" },
   { id: "ai", label: "AI connection", icon: "wand-sparkles" },
   { id: "appearance", label: "Appearance", icon: "palette" },
+  { id: "dictionary", label: "Dictionary", icon: "spell-check" },
   { id: "environment", label: "Sky & mood", icon: "cloud-sun" },
   { id: "location", label: "Location & weather", icon: "map-pin" },
   { id: "data", label: "Backup & import", icon: "package" },
@@ -71,7 +75,9 @@ export function Settings({ initial = "appearance", onClose, onSignIn, onSignedOu
             <Icon name="x" size={18} />
           </button>
           {section === "account" && <Account onSignIn={onSignIn} onSignedOut={onSignedOut} />}
+          {section === "friends" && <Friends onSignIn={onSignIn} />}
           {section === "ai" && <AiConnection onSignIn={onSignIn} />}
+          {section === "dictionary" && <Dictionary />}
           {section === "appearance" && <Appearance />}
           {section === "environment" && <Environment />}
           {section === "location" && <Location />}
@@ -111,6 +117,7 @@ function Appearance() {
   return (
     <>
       <Heading title="Appearance">Lumen shifts with the time of day.</Heading>
+      <AccentPicker />
       <Field label="Theme">
         <Segmented
           value={settings.theme}
@@ -154,6 +161,22 @@ function Appearance() {
           ]}
         />
       </Field>
+      <Field label="Spellcheck" hint="Underline misspelled words. Right-click one for corrections.">
+        <Toggle label="Spellcheck" checked={settings.spellcheck} onChange={(spellcheck) => update({ spellcheck })} />
+      </Field>
+      {settings.spellcheck && (
+        <Field label="Spelling" hint="Auto is American on US devices, British everywhere else.">
+          <Segmented
+            value={settings.spelling}
+            onChange={(spelling) => update({ spelling })}
+            options={[
+              { value: "auto", label: "Auto" },
+              { value: "en-GB", label: "British" },
+              { value: "en-US", label: "American" },
+            ]}
+          />
+        </Field>
+      )}
       <Field label="Ambient sound" hint="Rain and wind sounds that match the sky.">
         <Toggle
           label="Ambient sound"
@@ -164,6 +187,234 @@ function Appearance() {
           }}
         />
       </Field>
+    </>
+  );
+}
+
+/** Sky (the accent follows the time of day), a preset, or any color. */
+function AccentPicker() {
+  const { settings, update, sky, theme } = useAmbient();
+  const live = useMemo(() => themeFor(sky, theme.dark, null).accent, [sky, theme.dark]);
+  const custom = settings.accent && !ACCENT_PRESETS.some((p) => p.color === settings.accent) ? settings.accent : null;
+  const swatch = (active: boolean, background: string, label: string, onClick: () => void) => (
+    <button
+      key={label}
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className={`grid h-9 w-9 place-items-center rounded-full transition-transform hover:scale-110 ${active ? "scale-110 shadow-[0_6px_16px_-6px_var(--shadow)]" : ""}`}
+      style={{ background }}
+    >
+      {active && <Icon name="check" size={16} strokeWidth={2.6} className="text-white drop-shadow" />}
+    </button>
+  );
+  return (
+    <div className="py-3.5">
+      <div className="text-[14px]">Accent color</div>
+      <div className="mt-0.5 mb-3 text-[12.5px] text-muted">Buttons, links and highlights. “Sky” changes with the time of day.</div>
+      <div className="flex flex-wrap items-center gap-2.5">
+        {swatch(!settings.accent, "conic-gradient(from 200deg, #f08fb0, #6cb2ff, #f2aa5c, #a99cff, #f08fb0)", "Sky", () => update({ accent: null }))}
+        {ACCENT_PRESETS.map((p) => swatch(settings.accent === p.color, p.color, p.name, () => update({ accent: p.color })))}
+        <label
+          title="Pick any color"
+          className={`relative grid h-9 w-9 place-items-center rounded-full transition-transform hover:scale-110 ${custom ? "scale-110" : "bg-hover"}`}
+          style={custom ? { background: custom } : undefined}
+        >
+          <Icon name={custom ? "check" : "pipette"} size={16} strokeWidth={custom ? 2.6 : 2} className={custom ? "text-white drop-shadow" : "text-muted"} />
+          <input type="color" value={settings.accent ?? live} onChange={(e) => update({ accent: e.target.value })} className="absolute inset-0 opacity-0" />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+// ---- dictionary ----------------------------------------------------------------------------
+
+function Dictionary() {
+  const [entries, setEntries] = useState(lumen.dictionary.entries);
+  const [word, setWord] = useState("");
+  const [meaning, setMeaning] = useState("");
+  const [filter, setFilter] = useState("");
+  const [editing, setEditing] = useState<string>();
+  useEffect(() => lumen.dictionary.onChange(() => setEntries(lumen.dictionary.entries())), []);
+  const q = filter.trim().toLowerCase();
+  const shown = entries.filter((e) => !q || e.word.toLowerCase().includes(q) || e.meaning?.toLowerCase().includes(q));
+  return (
+    <>
+      <Heading title="Dictionary">
+        Words the spellchecker accepts, such as names, places and words you made up, each with a meaning if you like. Right-click an underlined word in a page to add it. Your dictionary syncs to your other devices.
+      </Heading>
+      <form
+        className="mb-5 flex flex-col gap-2 rounded-2xl bg-hover p-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (word.trim()) void lumen.dictionary.add(word.trim(), meaning);
+          setWord("");
+          setMeaning("");
+        }}
+      >
+        <div className="flex gap-2">
+          <TextInput placeholder="Word" value={word} onChange={(e) => setWord(e.target.value)} className="bg-surface" />
+          <button type="submit" disabled={!word.trim()} className="flex flex-none items-center gap-2 rounded-xl bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-50">
+            <Icon name="plus" size={16} /> Add
+          </button>
+        </div>
+        <TextInput placeholder="Meaning (optional)" value={meaning} onChange={(e) => setMeaning(e.target.value)} className="bg-surface" />
+      </form>
+      {entries.length > 8 && <TextInput placeholder={`Search ${entries.length} words`} value={filter} onChange={(e) => setFilter(e.target.value)} className="mb-3" />}
+      {entries.length === 0 && <div className="rounded-2xl bg-hover px-4 py-5 text-[13.5px] text-muted">No words yet.</div>}
+      <div className="-mx-2">
+        {shown.map((e) => (
+          <div key={e.word} className="group flex items-start gap-3 rounded-xl px-2 py-2 hover:bg-hover">
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-medium">{e.word}</div>
+              {editing === e.word ? (
+                <textarea
+                  autoFocus
+                  defaultValue={e.meaning ?? ""}
+                  placeholder="What it means"
+                  rows={2}
+                  onBlur={(ev) => {
+                    void lumen.dictionary.define(e.word, ev.target.value);
+                    setEditing(undefined);
+                  }}
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter" && !ev.shiftKey) {
+                      ev.preventDefault();
+                      ev.currentTarget.blur();
+                    }
+                    if (ev.key === "Escape") setEditing(undefined);
+                  }}
+                  className="mt-1 w-full resize-none rounded-lg bg-active px-2.5 py-1.5 text-[13px] leading-relaxed placeholder:text-faint"
+                />
+              ) : (
+                <button onClick={() => setEditing(e.word)} className="mt-0.5 block text-left text-[13px] leading-relaxed text-muted hover:text-fg">
+                  {e.meaning ?? <span className="text-faint">Add a meaning</span>}
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => void lumen.dictionary.remove(e.word)}
+              className="grid h-7 w-7 flex-none place-items-center rounded-lg text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-active hover:text-danger"
+              aria-label={`Remove ${e.word}`}
+              title="Remove"
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ---- friends -------------------------------------------------------------------------------
+
+/** The account's friends and requests, kept current (undefined while loading or signed out). */
+export function useFriends() {
+  const { user } = useAccount();
+  const [friends, setFriends] = useState<Friend[]>();
+  useEffect(() => {
+    if (!user) return setFriends(undefined);
+    const load = () => lumen.account.friends().then(setFriends, () => setFriends((f) => f ?? []));
+    load();
+    return lumen.onFriendsChanged(load);
+  }, [user]);
+  return [friends, setFriends] as const;
+}
+
+function Friends({ onSignIn }: { onSignIn: () => void }) {
+  const { user } = useAccount();
+  const toast = useToast();
+  const [friends, setFriends] = useFriends();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  if (!user)
+    return (
+      <>
+        <Heading title="Friends">Add the people you share with. You need an account for this.</Heading>
+        <Button tone="primary" icon="log-in" onClick={onSignIn}>
+          Sign in or create an account
+        </Button>
+      </>
+    );
+
+  const act = async (task: () => Promise<Friend[]>) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      setFriends(await task());
+      return true;
+    } catch (e) {
+      setError(e instanceof AccountError ? e.message : String(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const groups: [string, Friend[]][] = [
+    ["Asked you", friends?.filter((f) => f.status === "incoming") ?? []],
+    ["Friends", friends?.filter((f) => f.status === "accepted") ?? []],
+    ["Waiting for them", friends?.filter((f) => f.status === "outgoing") ?? []],
+  ];
+
+  return (
+    <>
+      <Heading title="Friends">Friends show up first when you share, so sharing takes one click.</Heading>
+      <form
+        className="flex gap-2"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const to = email.trim();
+          if (await act(() => lumen.account.addFriend(to))) {
+            toast(`Friend request sent to ${to}`, { icon: "user-plus" });
+            setEmail("");
+          }
+        }}
+      >
+        <TextInput type="email" required placeholder="Their email address" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <button type="submit" disabled={busy || !email.trim()} className="flex flex-none items-center gap-2 rounded-xl bg-accent px-3.5 text-[13.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-50">
+          <Icon name="user-plus" size={16} /> Add friend
+        </button>
+      </form>
+      {error && (
+        <p className="mt-3 flex items-start gap-2 text-[13px] text-danger">
+          <Icon name="triangle-alert" size={15} className="mt-0.5 flex-none" />
+          {error}
+        </p>
+      )}
+      {!friends && <div className="mt-6 text-[13px] text-muted">Loading…</div>}
+      {friends?.length === 0 && <div className="mt-6 rounded-2xl bg-hover px-4 py-5 text-[13.5px] text-muted">No friends yet. Add someone by the email they use for Lumen.</div>}
+      {groups.map(([title, list]) =>
+        list.length ? (
+          <div key={title} className="mt-6">
+            <div className="mb-1.5 text-[11px] font-medium tracking-[0.14em] text-faint uppercase">{title}</div>
+            {list.map((f) => (
+              <div key={f.id} className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-hover">
+                <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-accent-soft text-[14px] font-medium text-accent">{f.user.name[0]?.toUpperCase()}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[14px]">{f.user.name}</div>
+                  <div className="truncate text-[12.5px] text-muted">{f.user.email}</div>
+                </div>
+                {f.status === "incoming" && (
+                  <Button tone="primary" icon="user-check" disabled={busy} onClick={() => void act(() => lumen.account.acceptFriend(f.id))}>
+                    Accept
+                  </Button>
+                )}
+                <button
+                  onClick={() => void act(() => lumen.account.removeFriend(f.id))}
+                  className={`rounded-lg px-2.5 py-1 text-[12.5px] text-muted hover:bg-active hover:text-danger ${f.status === "accepted" ? "opacity-0 group-hover:opacity-100" : ""}`}
+                >
+                  {f.status === "incoming" ? "Decline" : f.status === "outgoing" ? "Cancel" : "Remove"}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null,
+      )}
     </>
   );
 }

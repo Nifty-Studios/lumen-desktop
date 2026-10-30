@@ -139,7 +139,7 @@ export function AmbientProvider({ children }: { children: ReactNode }) {
       }),
     [now, settings.location, settings.liveWeather, settings.envTime, settings.envWeather, weather],
   );
-  const theme = useMemo(() => themeFor(sky, dark), [sky, dark]);
+  const theme = useMemo(() => themeFor(sky, dark, settings.accent), [sky, dark, settings.accent]);
 
   useLayoutEffect(() => {
     const root = document.documentElement;

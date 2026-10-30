@@ -1,14 +1,27 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { en } from "@blocknote/core/locales";
 import type { BlockNoteEditor, PartialBlock } from "@blocknote/core";
 import type { Block } from "@lumen/shared/schema/client";
 import { isEditorBlock, toEditorBlock } from "@lumen/shared/editor";
-import { applyRemoteUpdate, filterSlashItems, lumenSchema, slashItems, snapshot, type SlashItem, type Snapshot } from "@lumen/shared/editor/blocknote";
+import {
+  applyRemoteUpdate,
+  attachSpellcheck,
+  filterSlashItems,
+  lumenSchema,
+  slashItems,
+  snapshot,
+  type Misspelling,
+  type SlashItem,
+  type Snapshot,
+  type SpellcheckHandle,
+} from "@lumen/shared/editor/blocknote";
 import type { PageSession } from "../data/workspace";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { SlashMenu } from "./SlashMenu";
+import { SpellMenu } from "./SpellMenu";
+import { onDictionaryChange, spellchecker } from "../lib/spell";
 
 const SAVE_DELAY = 400;
 const MAX_IMAGE_SIDE = 1800;
@@ -57,7 +70,9 @@ const countWords = (editor: LumenEditor) => {
 
 export function Editor({ page, session, editable, onReady, onWords }: Props) {
   const { blocks } = session;
-  const { theme } = useAmbient();
+  const { theme, settings } = useAmbient();
+  const spell = useRef<SpellcheckHandle>(undefined);
+  const [misspelling, setMisspelling] = useState<Misspelling>();
   const initialContent = useMemo(() => {
     const top = page.content
       .map((id) => blocks.get(id))
@@ -73,6 +88,8 @@ export function Editor({ page, session, editable, onReady, onWords }: Props) {
       schema: lumenSchema,
       initialContent: initialContent as never,
       uploadFile: imageToDataUrl,
+      // Lumen draws its own squiggles (with the person's dictionary), so the browser's are off.
+      domAttributes: { editor: { spellcheck: "false" } },
       dictionary: {
         ...en,
         placeholders: { ...en.placeholders, default: "Write, or press / for blocks", emptyDocument: "Start writing, or press / for blocks" },
@@ -107,6 +124,7 @@ export function Editor({ page, session, editable, onReady, onWords }: Props) {
         applyingRemote.current = false;
       }
       onWords?.(countWords(editor));
+      spell.current?.changed();
     });
     // Save when leaving the page or closing the window.
     window.addEventListener("beforeunload", flush);
@@ -119,7 +137,34 @@ export function Editor({ page, session, editable, onReady, onWords }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!settings.spellcheck || !editable) return;
+    const handle = attachSpellcheck({
+      root: () => editor.domElement,
+      view: () => editor.prosemirrorView,
+      check: async (words) => (await spellchecker()).misspelled(words),
+    });
+    spell.current = handle;
+    handle.invalidate();
+    const off = onDictionaryChange(() => handle.invalidate());
+    return () => {
+      off();
+      handle.destroy();
+      spell.current = undefined;
+      setMisspelling(undefined);
+    };
+  }, [editor, settings.spellcheck, editable]);
+
   return (
+    <div
+      className="contents"
+      onContextMenu={(e) => {
+        const m = spell.current?.at(e.clientX, e.clientY);
+        if (!m) return;
+        e.preventDefault();
+        setMisspelling(m);
+      }}
+    >
     <BlockNoteView
       editor={editor}
       editable={editable}
@@ -128,6 +173,7 @@ export function Editor({ page, session, editable, onReady, onWords }: Props) {
       emojiPicker={false}
       onChange={() => {
         if (applyingRemote.current) return;
+        spell.current?.changed();
         dirty.current = true;
         window.clearTimeout(timer.current);
         timer.current = window.setTimeout(() => {
@@ -143,5 +189,16 @@ export function Editor({ page, session, editable, onReady, onWords }: Props) {
         onItemClick={(item) => item.onItemClick()}
       />
     </BlockNoteView>
+      {misspelling && (
+        <SpellMenu
+          misspelling={misspelling}
+          onReplace={(text) => spell.current?.replace(misspelling, text)}
+          onClose={() => {
+            setMisspelling(undefined);
+            editor.focus();
+          }}
+        />
+      )}
+    </div>
   );
 }

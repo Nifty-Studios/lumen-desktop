@@ -168,26 +168,38 @@ interface Toast {
   text: string;
   icon: IconName;
   tone: "info" | "error";
+  onClick?: (() => void) | undefined;
 }
 
-const ToastContext = createContext<(text: string, opts?: { icon?: IconName; tone?: Toast["tone"] }) => void>(() => {});
+type ToastOptions = { icon?: IconName; tone?: Toast["tone"]; onClick?: () => void };
+const ToastContext = createContext<(text: string, opts?: ToastOptions) => void>(() => {});
 export const useToast = () => useContext(ToastContext);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const show = useCallback((text: string, opts: { icon?: IconName; tone?: Toast["tone"] } = {}) => {
+  const show = useCallback((text: string, opts: ToastOptions = {}) => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, text, icon: opts.icon ?? (opts.tone === "error" ? "triangle-alert" : "circle-check"), tone: opts.tone ?? "info" }]);
-    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), opts.tone === "error" ? 7000 : 4200);
+    setToasts((t) => [...t, { id, text, icon: opts.icon ?? (opts.tone === "error" ? "triangle-alert" : "circle-check"), tone: opts.tone ?? "info", onClick: opts.onClick }]);
+    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), opts.tone === "error" || opts.onClick ? 7000 : 4200);
   }, []);
   return (
     <ToastContext.Provider value={show}>
       {children}
       <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex flex-col items-center gap-2">
         {toasts.map((t) => (
-          <div key={t.id} className="surface animate-pop flex max-w-[520px] items-center gap-2.5 rounded-2xl px-4 py-2.5 text-[13.5px]">
+          <div
+            key={t.id}
+            role={t.onClick ? "button" : undefined}
+            onClick={() => {
+              if (!t.onClick) return;
+              t.onClick();
+              setToasts((all) => all.filter((x) => x.id !== t.id));
+            }}
+            className={`surface animate-pop flex max-w-[520px] items-center gap-2.5 rounded-2xl px-4 py-2.5 text-[13.5px] ${t.onClick ? "pointer-events-auto hover:brightness-105" : ""}`}
+          >
             <Icon name={t.icon} size={16} className={t.tone === "error" ? "text-danger" : "text-accent"} />
             <span>{t.text}</span>
+            {t.onClick && <Icon name="chevron-right" size={15} className="text-faint" />}
           </div>
         ))}
       </div>

@@ -125,7 +125,15 @@ function Workspace() {
   useEffect(() => {
     const offNotice = lumen.onNotice((n) => {
       void notify(n);
-      toast(`${n.title}: ${n.body}`, { icon: "users" });
+      const friendly = n.kind === "friend_request" || n.kind === "friend_accepted";
+      toast(`${n.title}: ${n.body}`, {
+        icon: friendly ? "user-plus" : "users",
+        onClick: () => {
+          if (n.notificationId) void lumen.inbox.markRead([n.notificationId]);
+          if (friendly) setSettings("friends");
+          else if (n.pageId) setPageId(n.pageId);
+        },
+      });
     });
     const offRejected = lumen.onSyncRejected(() =>
       toast("Some changes weren't saved: you can only view that page now.", { tone: "error", icon: "lock" }),

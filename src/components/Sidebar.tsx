@@ -1,4 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { getVersion } from "@tauri-apps/api/app";
+import type { ReleaseNote } from "@lumen/shared/client";
+import { lumen } from "../db/client";
+import { InboxButton } from "./Inbox";
 import { canEdit, type Role } from "@lumen/shared";
 import type { Space } from "@lumen/shared/schema/client";
 import { iconColor, resolveIcon, type IconName } from "@lumen/shared/icons";
@@ -59,6 +63,7 @@ export function Sidebar({ space, role, currentId, onOpen, onSearch, onSettings, 
       <div className="px-2.5 pb-2">
         <SpaceSwitcher space={space} role={role} onSwitch={onSwitchSpace} />
         <Row icon="search" label="Search" hint={<Kbd>Ctrl K</Kbd>} onClick={onSearch} />
+        <InboxButton onOpen={onOpen} onSwitchSpace={onSwitchSpace} onFriends={() => onSettings("friends")} />
         {editable && <Row icon="plus" label="New page" hint={<Kbd>Ctrl N</Kbd>} onClick={() => createPage(space, null).then(onOpen)} />}
       </div>
 
@@ -113,6 +118,7 @@ export function Sidebar({ space, role, currentId, onOpen, onSearch, onSettings, 
         )}
       </nav>
 
+      <WhatsNewCard />
       <UpdateCard />
       <AccountCard onSignIn={onSignIn} />
 
@@ -215,6 +221,69 @@ function AccountCard({ onSignIn }: { onSignIn: () => void }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** After an update: what changed, until it's dismissed (or two weeks pass). */
+function WhatsNewCard() {
+  const [note, setNote] = useState<{ version: string; note: ReleaseNote }>();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    getVersion()
+      .then(async (version) => {
+        const n = await lumen.whatsNew(version);
+        if (n) setNote({ version, note: n });
+      })
+      .catch(() => {});
+  }, []);
+  if (!note) return null;
+  const dismiss = () => {
+    void lumen.dismissWhatsNew(note.version);
+    setNote(undefined);
+    setOpen(false);
+  };
+  return (
+    <>
+      <div className="mx-2.5 mb-1.5 rounded-2xl bg-accent-soft px-3.5 py-3">
+        <div className="flex items-center gap-2 text-[13px] font-medium">
+          <Icon name="party-popper" size={16} className="text-accent" />
+          New in Lumen {note.version}
+        </div>
+        <p className="mt-1 text-[12.5px] leading-snug text-muted">{note.note.title}</p>
+        <div className="mt-2.5 flex gap-1.5">
+          <button onClick={() => setOpen(true)} className="rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-accent-fg hover:brightness-110">
+            See what's new
+          </button>
+          <button onClick={dismiss} className="rounded-lg px-3 py-1.5 text-[12.5px] text-muted hover:bg-hover hover:text-fg">
+            Got it
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="animate-fade fixed inset-0 z-50 grid place-items-center p-6" style={{ background: "var(--scrim)" }} onMouseDown={() => setOpen(false)}>
+          <div className="surface animate-pop w-[min(460px,94vw)] rounded-[26px] p-6" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="mb-1 text-[11px] font-medium tracking-[0.14em] text-faint uppercase">Lumen {note.version}</div>
+            <h2 className="mb-4 font-serif text-[22px] leading-tight font-semibold">{note.note.title}</h2>
+            <div className="space-y-3.5">
+              {note.note.items.map((i) => (
+                <div key={i.title} className="flex gap-3">
+                  <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-accent" />
+                  <div>
+                    <div className="text-[14px] font-medium">{i.title}</div>
+                    <div className="mt-0.5 text-[13px] leading-relaxed text-muted">{i.body}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button onClick={dismiss} className="rounded-xl bg-accent px-4 py-2 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
