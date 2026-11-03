@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { getVersion } from "@tauri-apps/api/app";
 import type { ReleaseNote } from "@lumen/shared/client";
 import { lumen } from "../db/client";
@@ -262,12 +263,14 @@ function WhatsNewCard() {
           </button>
         </div>
       </div>
-      {open && (
+      {/* On document.body: the sidebar's glass (backdrop-filter) would trap a fixed overlay inside it. */}
+      {open &&
+        createPortal(
         <div className="animate-fade fixed inset-0 z-50 grid place-items-center p-6" style={{ background: "var(--scrim)" }} onMouseDown={() => setOpen(false)}>
-          <div className="surface animate-pop w-[min(460px,94vw)] rounded-[26px] p-6" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="surface animate-pop flex max-h-[calc(100vh-48px)] w-[min(480px,94vw)] flex-col rounded-[26px] p-6" onMouseDown={(e) => e.stopPropagation()}>
             <div className="mb-1 text-[11px] font-medium tracking-[0.14em] text-faint uppercase">Lumen {note.version}</div>
             <h2 className="mb-4 font-serif text-[22px] leading-tight font-semibold">{note.note.title}</h2>
-            <div className="space-y-3.5">
+            <div className="-mr-2 min-h-0 flex-1 space-y-3.5 overflow-y-auto pr-2">
               {note.note.items.map((i) => (
                 <div key={i.title} className="flex gap-3">
                   <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-accent" />
@@ -278,13 +281,14 @@ function WhatsNewCard() {
                 </div>
               ))}
             </div>
-            <div className="mt-6 flex justify-end">
+            <div className="mt-5 flex flex-none justify-end">
               <button onClick={dismiss} className="rounded-xl bg-accent px-4 py-2 text-[13.5px] font-medium text-accent-fg hover:brightness-110">
                 Got it
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

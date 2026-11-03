@@ -1,4 +1,4 @@
-// The calendar: a month of days to put stickers on. Drag a sticker from the tray onto a day
+// The calendar: a month of days to put stickers on. Drag a sticker from the box onto a day
 // (or click a day) to plan something; drag an event to move it. Holidays and your birthday
 // are already there. Events live in a workspace, so they sync and share like pages.
 
@@ -31,7 +31,7 @@ import { useLive } from "../data/hooks";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { timeParts } from "../ambient/Clock";
 import { Icon } from "./Icon";
-import { Button, Select, TextInput, Toggle, useToast } from "./ui";
+import { Button, Popover, Select, TextInput, Toggle, useToast } from "./ui";
 
 const STICKER_MIME = "application/x-lumen-sticker";
 const EVENT_MIME = "application/x-lumen-event";
@@ -95,6 +95,8 @@ export function CalendarView({ space, role, onShowSidebar, onOpenSettings }: Pro
   const [selected, setSelected] = useState(todayYmd);
   const [editing, setEditing] = useState<{ id?: string; date: string; sticker?: string } | null>(null);
   const [dropDay, setDropDay] = useState<string | null>(null);
+  const [picker, setPicker] = useState<HTMLElement | null>(null);
+  const [stickerPop, setStickerPop] = useState<HTMLElement | null>(null);
   const version = useCalendarVersion();
   const formatTime = useFormatTime();
   const toast = useToast();
@@ -123,6 +125,35 @@ export function CalendarView({ space, role, onShowSidebar, onOpenSettings }: Pro
     d.setMonth(d.getMonth() + n);
     setMonth(ymd(d));
   };
+
+  const goTo = (date: string) => {
+    setMonth(date.slice(0, 8) + "01");
+    setSelected(date);
+  };
+
+  // Arrow keys move the selected day, Page Up/Down the month, T jumps to today
+  // (when nothing else has the keyboard).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (editing || picker || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) || document.querySelector(".fixed.inset-0")) return;
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+      if (step) goTo(addDays(selected, step));
+      else if (e.key === "PageUp" || e.key === "PageDown") {
+        const d = parseYmd(selected);
+        d.setMonth(d.getMonth() + (e.key === "PageUp" ? -1 : 1));
+        goTo(ymd(d));
+      } else if (e.key === "t" || e.key === "T" || e.key === "Home") goTo(today);
+      else if (e.key === "Enter" && home) setEditing({ date: selected });
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const pickSticker = (id: string) => setEditing({ date: selected, sticker: id });
 
   const onDrop = async (e: DragEvent, date: string) => {
     e.preventDefault();
@@ -155,21 +186,35 @@ export function CalendarView({ space, role, onShowSidebar, onOpenSettings }: Pro
             <Icon name="panel-left" size={17} />
           </button>
         )}
-        <h1 className="font-serif text-[28px] leading-none font-semibold tracking-tight">{monthName}</h1>
+        <button
+          onClick={(e) => setPicker(picker ? null : e.currentTarget)}
+          className={`-ml-2 flex items-center gap-1.5 rounded-xl px-2 py-1 transition-colors hover:bg-hover ${picker ? "bg-hover" : ""}`}
+          title="Pick a month and year"
+        >
+          <h1 className="font-serif text-[28px] leading-none font-semibold tracking-tight">{monthName}</h1>
+          <Icon name="chevron-down" size={18} className="mt-1 text-faint" />
+        </button>
         <span className="flex-1" />
-        <button onClick={() => shiftMonth(-1)} className="grid h-8 w-8 place-items-center rounded-xl text-muted hover:bg-hover hover:text-fg" aria-label="Previous month">
+        {home && (
+          <button
+            onClick={(e) => setStickerPop(stickerPop ? null : e.currentTarget)}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] text-muted hover:bg-hover hover:text-fg lg:hidden"
+          >
+            <Icon name="sticky-note" size={15} />
+            Stickers
+          </button>
+        )}
+        <button onClick={() => shiftMonth(-1)} className="grid h-8 w-8 place-items-center rounded-xl text-muted hover:bg-hover hover:text-fg" aria-label="Previous month" title="Previous month (Page Up)">
           <Icon name="chevron-left" size={17} />
         </button>
         <button
-          onClick={() => {
-            setMonth(today.slice(0, 8) + "01");
-            setSelected(today);
-          }}
+          onClick={() => goTo(today)}
           className="rounded-xl px-3 py-1.5 text-[13px] text-muted hover:bg-hover hover:text-fg"
+          title="Today (T)"
         >
           Today
         </button>
-        <button onClick={() => shiftMonth(1)} className="grid h-8 w-8 place-items-center rounded-xl text-muted hover:bg-hover hover:text-fg" aria-label="Next month">
+        <button onClick={() => shiftMonth(1)} className="grid h-8 w-8 place-items-center rounded-xl text-muted hover:bg-hover hover:text-fg" aria-label="Next month" title="Next month (Page Down)">
           <Icon name="chevron-right" size={17} />
         </button>
         {home && (
@@ -179,25 +224,17 @@ export function CalendarView({ space, role, onShowSidebar, onOpenSettings }: Pro
         )}
       </header>
 
-      {home && (
-        <div className="flex items-center gap-1.5 overflow-x-auto px-6 pb-3 [scrollbar-width:none]">
-          <span className="mr-1 flex-none text-[12px] text-faint">Drag a sticker onto a day</span>
-          {STICKERS.map((s) => (
-            <button
-              key={s.id}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData(STICKER_MIME, s.id);
-                e.dataTransfer.effectAllowed = "copy";
-              }}
-              onClick={() => setEditing({ date: selected, sticker: s.id })}
-              title={`${s.label}: drag onto a day`}
-              className="flex-none cursor-grab rounded-full p-0.5 transition-transform hover:scale-115 active:cursor-grabbing"
-            >
-              <StickerBadge sticker={s.id} size={28} />
-            </button>
-          ))}
-        </div>
+      {picker && <MonthPicker anchor={picker} month={month} today={today} onPick={(m) => (setMonth(m), setSelected(m.slice(0, 7) === today.slice(0, 7) ? today : m))} onClose={() => setPicker(null)} />}
+      {stickerPop && (
+        <Popover anchor={stickerPop} onClose={() => setStickerPop(null)} width={300} align="end">
+          <StickerBox
+            onPick={(id) => {
+              setStickerPop(null);
+              pickSticker(id);
+            }}
+            onDragStart={() => setStickerPop(null)}
+          />
+        </Popover>
       )}
 
       <div className="flex min-h-0 flex-1 gap-4 px-6 pb-5">
@@ -247,7 +284,8 @@ export function CalendarView({ space, role, onShowSidebar, onOpenSettings }: Pro
           </div>
         </div>
 
-        <aside className="hidden w-[260px] flex-none flex-col gap-4 overflow-y-auto lg:flex">
+        <aside className="hidden w-[272px] flex-none flex-col gap-4 overflow-y-auto lg:flex">
+          {home && <StickerBox onPick={pickSticker} />}
           <section>
             <div className="px-1 pb-1.5 text-[11px] font-medium tracking-[0.14em] text-faint uppercase">
               {selected === today ? "Today" : parseYmd(selected).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
@@ -287,6 +325,92 @@ export function CalendarView({ space, role, onShowSidebar, onOpenSettings }: Pro
         />
       )}
     </div>
+  );
+}
+
+/** The stickers, in a box: drag one onto a day, or click it to plan something on the selected day. */
+function StickerBox({ onPick, onDragStart }: { onPick: (id: string) => void; onDragStart?: () => void }) {
+  return (
+    <section className="rounded-2xl bg-hover p-3">
+      <div className="mb-2 flex items-baseline justify-between px-0.5">
+        <span className="text-[11px] font-medium tracking-[0.14em] text-faint uppercase">Stickers</span>
+        <span className="text-[11.5px] text-faint">Drag onto a day</span>
+      </div>
+      <div className="grid grid-cols-5 gap-1">
+        {STICKERS.map((s) => (
+          <button
+            key={s.id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData(STICKER_MIME, s.id);
+              e.dataTransfer.effectAllowed = "copy";
+              // Let the popover go once the drag has started (closing it sooner cancels the drag).
+              if (onDragStart) window.setTimeout(onDragStart, 0);
+            }}
+            onClick={() => onPick(s.id)}
+            title={`${s.label}: drag onto a day, or click to add it to the selected day`}
+            className="group flex cursor-grab flex-col items-center gap-1 rounded-xl px-0.5 py-1.5 transition-colors hover:bg-active active:cursor-grabbing"
+          >
+            <span className="transition-transform group-hover:scale-110">
+              <StickerBadge sticker={s.id} size={32} />
+            </span>
+            <span className="w-full truncate text-center text-[10.5px] text-muted">{s.label}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Jump anywhere: step through years, pick a month. */
+function MonthPicker({ anchor, month, today, onPick, onClose }: { anchor: HTMLElement; month: string; today: string; onPick: (month: string) => void; onClose: () => void }) {
+  const [year, setYear] = useState(Number(month.slice(0, 4)));
+  const months = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(undefined, { month: "short" }));
+  const pick = (m: number) => {
+    onPick(`${year}-${String(m + 1).padStart(2, "0")}-01`);
+    onClose();
+  };
+  return (
+    <Popover anchor={anchor} onClose={onClose} width={292}>
+      <div className="p-1.5">
+        <div className="mb-2 flex items-center gap-1">
+          <button onClick={() => setYear((y) => y - 1)} className="grid h-8 w-8 place-items-center rounded-xl text-muted hover:bg-hover hover:text-fg" aria-label="Previous year">
+            <Icon name="chevron-left" size={16} />
+          </button>
+          <span className="flex-1 text-center font-serif text-[18px] font-semibold tabular-nums">{year}</span>
+          <button onClick={() => setYear((y) => y + 1)} className="grid h-8 w-8 place-items-center rounded-xl text-muted hover:bg-hover hover:text-fg" aria-label="Next year">
+            <Icon name="chevron-right" size={16} />
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          {months.map((name, i) => {
+            const key = `${year}-${String(i + 1).padStart(2, "0")}`;
+            const current = key === month.slice(0, 7);
+            const now = key === today.slice(0, 7);
+            return (
+              <button
+                key={name}
+                onClick={() => pick(i)}
+                className={`rounded-xl py-2.5 text-[13.5px] transition-colors ${current ? "bg-accent font-medium text-accent-fg" : now ? "bg-accent-soft text-accent hover:brightness-110" : "text-fg hover:bg-hover"}`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => {
+            onPick(today.slice(0, 8) + "01");
+            onClose();
+          }}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] text-accent hover:bg-hover"
+        >
+          <Icon name="calendar-days" size={14} />
+          Back to today
+        </button>
+        <div className="mt-1 px-1 pb-0.5 text-center text-[11px] leading-snug text-faint">Arrow keys move the day · Page Up/Down the month · T for today</div>
+      </div>
+    </Popover>
   );
 }
 
