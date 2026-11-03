@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { CELEBRATIONS, CELEBRATION_IDS } from "@lumen/shared/calendar";
+import { BirthdayPicker } from "./Calendar";
 import {
   ACCENT_PRESETS,
   ENV_TIMES,
@@ -23,13 +25,14 @@ import { ambientSound } from "../lib/sound";
 import { Icon } from "./Icon";
 import { Button, Segmented, TextInput, Toggle, useToast } from "./ui";
 
-export type SettingsSection = "account" | "friends" | "ai" | "appearance" | "dictionary" | "environment" | "location" | "data" | "about";
+export type SettingsSection = "account" | "friends" | "ai" | "appearance" | "calendar" | "dictionary" | "environment" | "location" | "data" | "about";
 
 const SECTIONS: { id: SettingsSection; label: string; icon: IconName }[] = [
   { id: "account", label: "Account", icon: "circle-user" },
   { id: "friends", label: "Friends", icon: "users" },
   { id: "ai", label: "AI connection", icon: "wand-sparkles" },
   { id: "appearance", label: "Appearance", icon: "palette" },
+  { id: "calendar", label: "Calendar", icon: "calendar-days" },
   { id: "dictionary", label: "Dictionary", icon: "spell-check" },
   { id: "environment", label: "Sky & mood", icon: "cloud-sun" },
   { id: "location", label: "Location & weather", icon: "map-pin" },
@@ -79,6 +82,7 @@ export function Settings({ initial = "appearance", onClose, onSignIn, onSignedOu
           {section === "ai" && <AiConnection onSignIn={onSignIn} />}
           {section === "dictionary" && <Dictionary />}
           {section === "appearance" && <Appearance />}
+          {section === "calendar" && <CalendarSettings />}
           {section === "environment" && <Environment />}
           {section === "location" && <Location />}
           {section === "data" && <Data />}
@@ -111,6 +115,57 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 // ---- appearance ---------------------------------------------------------------------------
+
+function CalendarSettings() {
+  const { settings, update, preview, celebration } = useAmbient();
+  const [birthday, setBirthday] = useState(lumen.profile.birthday);
+  useEffect(() => lumen.profile.onChange(() => setBirthday(lumen.profile.birthday())), []);
+  return (
+    <>
+      <Heading title="Calendar">Your events, the holidays and your birthday, with reminders when they come round.</Heading>
+      <div className="py-3.5">
+        <div className="mb-2 text-[14px]">Your birthday</div>
+        <BirthdayPicker value={birthday} onChange={(v) => v && v !== birthday && void lumen.profile.setBirthday(v).catch(() => {})} />
+        <div className="mt-1.5 text-[12.5px] text-muted">
+          Saved to your account, so all your devices celebrate.
+          {birthday && (
+            <button className="ml-2 text-accent hover:underline" onClick={() => void lumen.profile.setBirthday(null)}>
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+      <Field label="Reminders" hint="Notifications for your events, even while Lumen is closed.">
+        <Toggle checked={settings.reminders} onChange={(reminders) => update({ reminders })} label="Reminders" />
+      </Field>
+      <Field label="Holidays" hint="New Year, Valentine's Day, Easter, Halloween and Christmas.">
+        <Toggle checked={settings.holidays} onChange={(holidays) => update({ holidays })} label="Holidays" />
+      </Field>
+      <Field label="Good morning notes" hint="A notification on the morning of a holiday or your birthday.">
+        <Toggle checked={settings.holidayAlerts} onChange={(holidayAlerts) => update({ holidayAlerts })} label="Good morning notes" />
+      </Field>
+      <Field label="Celebrations in the sky" hint="Special days take over the sky: fireworks, hearts, snow and lights, confetti.">
+        <Toggle checked={settings.celebrations} onChange={(celebrations) => update({ celebrations })} label="Celebrations" />
+      </Field>
+      <div className="py-3.5">
+        <div className="text-[14px]">Preview</div>
+        <div className="mt-0.5 mb-2.5 text-[12.5px] text-muted">See each one for 20 seconds (close Settings to watch).</div>
+        <div className="flex flex-wrap gap-1.5">
+          {CELEBRATION_IDS.map((id) => (
+            <button
+              key={id}
+              onClick={() => preview(celebration?.event.id === "preview" && celebration.celebration.id === id ? null : id)}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] transition-colors ${celebration?.event.id === "preview" && celebration.celebration.id === id ? "bg-accent text-accent-fg" : "bg-hover hover:bg-active"}`}
+            >
+              <Icon name={CELEBRATIONS[id].icon} size={14} />
+              {CELEBRATIONS[id].name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
 
 function Appearance() {
   const { settings, update } = useAmbient();

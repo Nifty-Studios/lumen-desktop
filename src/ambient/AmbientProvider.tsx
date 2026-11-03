@@ -3,6 +3,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { computeSky, themeFor, type LumenSettings, type SavedLocation, type SkyState, type ThemeTokens, type Weather } from "@lumen/shared/ambient";
+import { CELEBRATIONS, type ActiveCelebration, type CelebrationId } from "@lumen/shared/calendar";
 import { lumen } from "../db/client";
 import { bestLocation, deviceLocation } from "../lib/location";
 import { ambientSound } from "../lib/sound";
@@ -17,6 +18,10 @@ interface Ambient {
   locateDevice: () => Promise<SavedLocation>;
   setLocation: (loc: SavedLocation) => Promise<void>;
   refreshWeather: () => Promise<void>;
+  /** Today's special day (or the one being previewed), if any. */
+  celebration: ActiveCelebration | undefined;
+  /** Shows a celebration for a while (Settings), or stops the preview with null. */
+  preview: (id: CelebrationId | null) => void;
 }
 
 const AmbientContext = createContext<Ambient | null>(null);
@@ -128,6 +133,31 @@ export function AmbientProvider({ children }: { children: ReactNode }) {
     };
   }, [settings.location, settings.liveWeather]);
 
+  // The special day: checked every minute and whenever events, settings or the birthday change.
+  const [today, setToday] = useState<ActiveCelebration>();
+  const [previewing, setPreviewing] = useState<CelebrationId | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const check = () => lumen.calendar.celebration().then((c) => alive && setToday((cur) => (cur?.event.id === c?.event.id && cur?.greeting === c?.greeting ? cur : c)), console.error);
+    check();
+    const offData = lumen.onChange(check);
+    const offProfile = lumen.profile.onChange(check);
+    return () => {
+      alive = false;
+      offData();
+      offProfile();
+    };
+  }, [now, settings.celebrations, settings.holidays]);
+  useEffect(() => {
+    if (!previewing) return;
+    const t = window.setTimeout(() => setPreviewing(null), 20_000);
+    return () => window.clearTimeout(t);
+  }, [previewing]);
+  const celebration = useMemo<ActiveCelebration | undefined>(
+    () => (previewing ? { celebration: CELEBRATIONS[previewing], greeting: CELEBRATIONS[previewing].name, event: { id: "preview" } as ActiveCelebration["event"] } : today),
+    [previewing, today],
+  );
+
   const sky = useMemo(
     () =>
       computeSky({
@@ -139,7 +169,7 @@ export function AmbientProvider({ children }: { children: ReactNode }) {
       }),
     [now, settings.location, settings.liveWeather, settings.envTime, settings.envWeather, weather],
   );
-  const theme = useMemo(() => themeFor(sky, dark, settings.accent), [sky, dark, settings.accent]);
+  const theme = useMemo(() => themeFor(sky, dark, settings.accent, celebration?.celebration), [sky, dark, settings.accent, celebration]);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -150,7 +180,9 @@ export function AmbientProvider({ children }: { children: ReactNode }) {
     root.style.colorScheme = theme.dark ? "dark" : "light";
     root.dataset.theme = theme.dark ? "dark" : "light";
     root.dataset.motion = settings.motion;
-  }, [theme, sky, settings.motion]);
+    if (celebration) root.dataset.celebration = celebration.celebration.id;
+    else delete root.dataset.celebration;
+  }, [theme, sky, settings.motion, celebration]);
 
   // Ambient sound follows the weather on screen.
   useEffect(() => {
@@ -164,8 +196,8 @@ export function AmbientProvider({ children }: { children: ReactNode }) {
   }, [settings.sound, sky.precip, sky.intensity, sky.wind]);
 
   const value = useMemo(
-    () => ({ settings, update, sky, theme, weather, locateDevice, setLocation, refreshWeather }),
-    [settings, update, sky, theme, weather, locateDevice, setLocation, refreshWeather],
+    () => ({ settings, update, sky, theme, weather, locateDevice, setLocation, refreshWeather, celebration, preview: setPreviewing }),
+    [settings, update, sky, theme, weather, locateDevice, setLocation, refreshWeather, celebration],
   );
   return <AmbientContext.Provider value={value}>{children}</AmbientContext.Provider>;
 }

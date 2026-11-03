@@ -14,6 +14,8 @@ import { Icon } from "./components/Icon";
 import { TitleBar } from "./components/TitleBar";
 import { ToastProvider, useToast } from "./components/ui";
 import { notify } from "./lib/notify";
+import { startReminders } from "./lib/reminders";
+import { BirthdayPrompt, CalendarView } from "./components/Calendar";
 import { updates } from "./lib/updates";
 
 type Boot = { state: "loading" } | { state: "error"; message: string } | { state: "auth" } | { state: "ready" };
@@ -43,14 +45,15 @@ function Screens() {
   }, []);
 
   // Background sync once started: on an interval, after edits, and when the window regains
-  // focus; plus a live socket while the window is visible, so other devices' edits arrive at once.
+  // focus; plus a live socket while signed in, so other devices' edits arrive at once and
+  // notifications pop up even while Lumen is minimized or behind other windows.
   useEffect(() => {
     const sync = lumen.sync;
     if (boot.state !== "ready" || !sync) return;
     const stop = sync.start();
     let closeLive: (() => void) | undefined;
     const updateLive = () => {
-      const want = document.visibilityState === "visible" && !!account.current;
+      const want = !!account.current;
       if (want && !closeLive) closeLive = sync.live();
       if (!want && closeLive) {
         closeLive();
@@ -110,7 +113,14 @@ function Workspace() {
   const [picked, setPicked] = useState(0);
   const space = useLive(getSpace, [picked]);
   const role = useLive(async () => (await listSpaces()).find((s) => s.space.id === space?.id)?.role, [space?.id]);
-  const [pageId, setPageId] = useState<string | null>(null);
+  const [pageId, setPageIdRaw] = useState<string | null>(null);
+  const [calendar, setCalendar] = useState(false);
+  const [askBirthday, setAskBirthday] = useState(false);
+  // Opening a page leaves the calendar.
+  const setPageId = (id: string | null) => {
+    setCalendar(false);
+    setPageIdRaw(id);
+  };
   const [searching, setSearching] = useState(false);
   const [settings, setSettings] = useState<SettingsSection | null>(null);
   const [signingIn, setSigningIn] = useState(false);
@@ -119,8 +129,14 @@ function Workspace() {
 
   // A different workspace (switched, or after signing in): start at its first page.
   useEffect(() => {
-    if (space) setPageId(space.pages[0] ?? null);
+    if (space) setPageIdRaw(space.pages[0] ?? null);
   }, [space?.id]);
+
+  // Coming back to Lumen without a birthday on file: ask once (later again if "Not now").
+  useEffect(() => {
+    const t = window.setTimeout(() => lumen.profile.shouldAsk() && setAskBirthday(true), 2500);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const offNotice = lumen.onNotice((n) => {
@@ -135,6 +151,7 @@ function Workspace() {
         },
       });
     });
+    const offReminders = startReminders((n) => toast(`${n.title}: ${n.body}`, { icon: "bell-ring", onClick: () => setCalendar(true) }));
     const offRejected = lumen.onSyncRejected(() =>
       toast("Some changes weren't saved: you can only view that page now.", { tone: "error", icon: "lock" }),
     );
@@ -145,6 +162,7 @@ function Workspace() {
     });
     return () => {
       offNotice();
+      offReminders();
       offRejected();
       offAccount();
     };
@@ -173,8 +191,10 @@ function Workspace() {
         <Sidebar
           space={space}
           role={role}
-          currentId={pageId}
+          currentId={calendar ? null : pageId}
           onOpen={setPageId}
+          calendarOpen={calendar}
+          onCalendar={() => setCalendar(true)}
           onSearch={() => setSearching(true)}
           onSettings={(s) => setSettings((s as SettingsSection) ?? "appearance")}
           onCollapse={() => setSidebar(false)}
@@ -186,7 +206,7 @@ function Workspace() {
         />
       )}
       <main className="sheet min-w-0 flex-1 overflow-hidden rounded-[22px]">
-        {!sidebar && !pageId && (
+        {!sidebar && !pageId && !calendar && (
           <button
             onClick={() => setSidebar(true)}
             className="absolute top-2.5 left-3 z-20 grid h-8 w-8 place-items-center rounded-xl text-muted transition-colors hover:bg-hover hover:text-fg"
@@ -195,7 +215,9 @@ function Workspace() {
             <Icon name="panel-left" size={17} />
           </button>
         )}
-        {pageId ? (
+        {calendar ? (
+          <CalendarView space={space} role={role} onShowSidebar={sidebar ? undefined : () => setSidebar(true)} onOpenSettings={() => setSettings("calendar")} />
+        ) : pageId ? (
           <PageView key={pageId} pageId={pageId} onOpen={setPageId} onSignIn={() => setSigningIn(true)} onShowSidebar={sidebar ? undefined : () => setSidebar(true)} />
         ) : (
           <div className="grid h-full place-items-center text-muted">
@@ -230,6 +252,7 @@ function Workspace() {
           }}
         />
       )}
+      {askBirthday && <BirthdayPrompt onClose={() => setAskBirthday(false)} />}
       {signingIn && (
         <AuthScreen
           onClose={() => setSigningIn(false)}

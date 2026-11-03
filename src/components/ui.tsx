@@ -147,6 +147,79 @@ export function Button({
   );
 }
 
+/**
+ * A dropdown that looks like Lumen: a soft field that opens a glass list. (WebView2 draws a
+ * native <select>'s list itself, unstyled, so it's never used.)
+ */
+export function Select<T extends string | number>({
+  value,
+  options,
+  onChange,
+  placeholder = "Choose…",
+  label,
+  variant = "field",
+  className = "",
+}: {
+  value: T | null | undefined;
+  options: { value: T; label: string; icon?: IconName }[];
+  onChange: (v: T) => void;
+  placeholder?: string;
+  label?: string;
+  /** "field": a full-width input-like button; "link": small accent text (e.g. "+ Add reminder"). */
+  variant?: "field" | "link";
+  className?: string;
+}) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const current = options.find((o) => o.value === value);
+  useLayoutEffect(() => {
+    if (anchor) listRef.current?.querySelector<HTMLElement>("[data-selected]")?.scrollIntoView({ block: "center" });
+  }, [anchor]);
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        onClick={(e) => setAnchor(anchor ? null : e.currentTarget)}
+        className={
+          variant === "field"
+            ? `flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[14px] transition-colors ${anchor ? "bg-active" : "bg-hover hover:bg-active"} ${className}`
+            : `rounded-lg px-2 py-1 text-[12.5px] text-accent transition-colors hover:bg-hover ${className}`
+        }
+      >
+        {variant === "field" && current?.icon && <Icon name={current.icon} size={15} className="text-muted" />}
+        <span className={`min-w-0 flex-1 truncate ${variant === "field" && !current ? "text-faint" : ""}`}>{variant === "link" ? placeholder : (current?.label ?? placeholder)}</span>
+        {variant === "field" && <Icon name="chevron-down" size={15} className="flex-none text-faint" />}
+      </button>
+      {anchor && (
+        <Popover anchor={anchor} onClose={() => setAnchor(null)} width={Math.max(anchor.offsetWidth, 180)}>
+          <div ref={listRef} role="listbox" className="max-h-64 overflow-y-auto">
+            {options.map((o) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={o.value === value}
+                data-selected={o.value === value ? "" : undefined}
+                key={String(o.value)}
+                onClick={() => {
+                  onChange(o.value);
+                  setAnchor(null);
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13.5px] transition-colors hover:bg-hover ${o.value === value ? "text-fg" : "text-muted"}`}
+              >
+                {o.icon && <Icon name={o.icon} size={15} />}
+                <span className="flex-1 truncate">{o.label}</span>
+                {o.value === value && <Icon name="check" size={15} className="text-accent" />}
+              </button>
+            ))}
+          </div>
+        </Popover>
+      )}
+    </>
+  );
+}
+
 /** A text field: a soft fill that deepens on focus, never an outline. */
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (

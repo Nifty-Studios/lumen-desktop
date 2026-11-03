@@ -14,9 +14,12 @@ export type UpdateState =
   | { phase: "downloading"; version: string; progress: number }
   | { phase: "ready"; version: string }
   | { phase: "installing"; version: string }
-  | { phase: "error"; version: string; message: string };
+  | { phase: "error"; version: string; message: string; stage: "download" | "install" };
 
 const CHECK_EVERY = 6 * 60 * 60_000;
+
+/** The reason, short enough for the card. */
+const errorText = (e: unknown) => String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, "").slice(0, 160);
 
 let state: UpdateState = { phase: "idle" };
 let pending: Update | null = null;
@@ -77,7 +80,7 @@ export const updates = {
       });
       set({ phase: "ready", version });
     } catch (e) {
-      set({ phase: "error", version, message: String(e) });
+      set({ phase: "error", version, message: errorText(e), stage: "download" });
     }
   },
   async install() {
@@ -88,7 +91,10 @@ export const updates = {
       await pending.install();
       await relaunch();
     } catch (e) {
-      set({ phase: "error", version: pending.version, message: String(e) });
+      console.error("update install failed", e);
+      // The downloaded installer is used up: "Try again" checks and downloads afresh.
+      set({ phase: "error", version: pending.version, message: errorText(e), stage: "install" });
+      pending = null;
     }
   },
   later() {

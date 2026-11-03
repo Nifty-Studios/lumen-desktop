@@ -1,5 +1,6 @@
 mod db;
 mod device;
+mod reminders;
 
 use tauri::Manager;
 
@@ -21,7 +22,8 @@ pub fn run() {
             db::db_query,
             db::db_batch,
             device::device_location,
-            device::save_file
+            device::save_file,
+            reminders::schedule_reminders
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lumen");

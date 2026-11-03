@@ -9,7 +9,7 @@ import type { Block } from "@lumen/shared/schema/client";
 import { account, listSpaces, pageTitle } from "../data/workspace";
 import { useAccount, useLive } from "../data/hooks";
 import { Icon } from "./Icon";
-import { Segmented, TextInput } from "./ui";
+import { Segmented, Select, TextInput } from "./ui";
 import { useFriends } from "./Settings";
 
 type Tab = "page" | "workspace";
@@ -179,17 +179,9 @@ export function ShareDialog({ page, onClose, onSignIn }: { page: Block; onClose:
                       <div className="truncate text-[12px] text-muted">{p.pending ? "Invited · joins when they sign up" : p.email}</div>
                     </div>
                     {canManage && !me ? (
-                      <select
-                        value={p.role}
-                        onChange={(e) => change(p, e.target.value as Role)}
-                        className="rounded-lg bg-transparent px-1.5 py-1 text-[12.5px] text-muted hover:bg-active"
-                      >
-                        {roles.map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABEL[r]}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="w-28">
+                        <Select label="Role" value={p.role} options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))} onChange={(r) => change(p, r as Role)} className="!py-1.5 text-[12.5px]" />
+                      </div>
                     ) : (
                       <span className="px-1.5 text-[12.5px] text-muted">{ROLE_LABEL[p.role]}</span>
                     )}

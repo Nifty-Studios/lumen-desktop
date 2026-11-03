@@ -5,6 +5,7 @@ import { memo, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { moonLitPath } from "@lumen/shared/ambient";
 import { useAmbient } from "./AmbientProvider";
 import { Precipitation } from "./Precipitation";
+import { Celebration } from "./Celebration";
 import { ambientSound } from "../lib/sound";
 import "./Sky.css";
 
@@ -19,7 +20,7 @@ function rng(seed: number) {
 }
 
 export function Sky() {
-  const { sky, theme, settings } = useAmbient();
+  const { sky, theme, settings, celebration } = useAmbient();
   const calm = settings.motion !== "full";
   const vars = {
     "--stars": sky.stars,
@@ -37,6 +38,7 @@ export function Sky() {
       {sky.fog > 0 && <Fog />}
       {sky.precip !== "none" && <Precipitation kind={sky.precip} intensity={sky.intensity} wind={sky.wind} dark={theme.dark || sky.daylight < 0.4} motion={settings.motion} />}
       {sky.storm && settings.motion !== "still" && <Lightning sound={settings.sound} />}
+      {celebration && <Celebration effect={celebration.celebration.effect} motion={settings.motion} dark={theme.dark || sky.daylight < 0.4} />}
       <div className="sky-vignette" />
     </div>
   );

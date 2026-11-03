@@ -34,6 +34,8 @@ interface Props {
   role: Role | undefined;
   currentId: string | null;
   onOpen: (id: string) => void;
+  calendarOpen: boolean;
+  onCalendar: () => void;
   onSearch: () => void;
   onSettings: (section?: string) => void;
   onCollapse: () => void;
@@ -43,7 +45,7 @@ interface Props {
 
 const ROLE_LABEL: Record<Role, string> = { owner: "Owner", editor: "Can edit", viewer: "Can view" };
 
-export function Sidebar({ space, role, currentId, onOpen, onSearch, onSettings, onCollapse, onSwitchSpace, onSignIn }: Props) {
+export function Sidebar({ space, role, currentId, calendarOpen, onCalendar, onOpen, onSearch, onSettings, onCollapse, onSwitchSpace, onSignIn }: Props) {
   const tree = useLive(() => pageTree(space), [space]) ?? [];
   const trash = useLive(trashedPages, []) ?? [];
   const shared = useLive(async () => {
@@ -64,6 +66,7 @@ export function Sidebar({ space, role, currentId, onOpen, onSearch, onSettings, 
         <SpaceSwitcher space={space} role={role} onSwitch={onSwitchSpace} />
         <Row icon="search" label="Search" hint={<Kbd>Ctrl K</Kbd>} onClick={onSearch} />
         <InboxButton onOpen={onOpen} onSwitchSpace={onSwitchSpace} onFriends={() => onSettings("friends")} />
+        <Row icon="calendar-days" label="Calendar" active={calendarOpen} onClick={onCalendar} />
         {editable && <Row icon="plus" label="New page" hint={<Kbd>Ctrl N</Kbd>} onClick={() => createPage(space, null).then(onOpen)} />}
       </div>
 
@@ -307,7 +310,8 @@ function UpdateCard() {
         {u.phase === "downloading" && "You can keep writing."}
         {u.phase === "ready" && "Lumen will close and reopen. Your notes are saved."}
         {u.phase === "installing" && "Lumen will reopen in a moment."}
-        {u.phase === "error" && "Check your connection and try again."}
+        {u.phase === "error" && (u.stage === "install" ? "The installer didn't finish. Try again, or get the latest Lumen from the download page." : "Check your connection and try again.")}
+        {u.phase === "error" && u.message && <span className="mt-1 block text-[11.5px] break-words text-faint">{u.message}</span>}
       </p>
       {u.phase === "downloading" && (
         <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-active">
@@ -331,9 +335,9 @@ function UpdateCard() {
   );
 }
 
-function Row({ icon, label, hint, onClick }: { icon: IconName; label: string; hint?: ReactNode; onClick: () => void }) {
+function Row({ icon, label, hint, active, onClick }: { icon: IconName; label: string; hint?: ReactNode; active?: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-muted transition-colors hover:bg-hover hover:text-fg">
+    <button onClick={onClick} className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-hover hover:text-fg ${active ? "bg-active text-fg" : "text-muted"}`}>
       <Icon name={icon} size={16} />
       <span className="flex-1">{label}</span>
       {hint}

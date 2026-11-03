@@ -48,7 +48,7 @@ export function weatherIcon(precip: string, storm: boolean, fog: number, clouds:
 }
 
 export function Clock({ onOpenSky }: { onOpenSky: () => void }) {
-  const { sky, settings } = useAmbient();
+  const { sky, settings, celebration } = useAmbient();
   const now = useNow(1000 * 15);
   const { time, period } = timeParts(now, settings.clock);
   const date = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
@@ -75,6 +75,12 @@ export function Clock({ onOpenSky }: { onOpenSky: () => void }) {
         {period && <span className="font-serif text-lg text-muted">{period}</span>}
       </div>
       <div className="mt-1.5 text-[13px] text-muted">{date}</div>
+      {celebration && (
+        <div key={celebration.greeting} className="animate-pop mt-2 flex items-center gap-1.5 text-[13px] font-medium text-accent">
+          <Icon name={celebration.celebration.icon} size={15} />
+          <span className="truncate">{celebration.greeting}</span>
+        </div>
+      )}
       <button
         onClick={onOpenSky}
         className="group mt-3 -ml-2 flex w-[calc(100%+16px)] items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-hover"
