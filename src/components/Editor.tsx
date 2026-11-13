@@ -21,7 +21,7 @@ import type { PageSession } from "../data/workspace";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { SlashMenu } from "./SlashMenu";
 import { SpellMenu } from "./SpellMenu";
-import { onDictionaryChange, spellchecker } from "../lib/spell";
+import { misspelled, onDictionaryChange } from "../lib/spell";
 
 const SAVE_DELAY = 400;
 const MAX_IMAGE_SIDE = 1800;
@@ -142,7 +142,7 @@ export function Editor({ page, session, editable, onReady, onWords }: Props) {
     const handle = attachSpellcheck({
       root: () => editor.domElement,
       view: () => editor.prosemirrorView,
-      check: async (words) => (await spellchecker()).misspelled(words),
+      check: misspelled,
     });
     spell.current = handle;
     handle.invalidate();

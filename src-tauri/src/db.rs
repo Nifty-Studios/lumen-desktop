@@ -7,7 +7,7 @@ use std::sync::Mutex;
 
 use rusqlite::types::{Value, ValueRef};
 use rusqlite::{Connection, params_from_iter};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
 pub struct Db(pub Mutex<Connection>);
@@ -19,13 +19,16 @@ impl Db {
             "PRAGMA journal_mode = WAL;
              PRAGMA synchronous = NORMAL;
              PRAGMA foreign_keys = ON;
-             PRAGMA busy_timeout = 5000;",
+             PRAGMA busy_timeout = 5000;
+             PRAGMA temp_store = MEMORY;
+             PRAGMA cache_size = -16000;
+             PRAGMA mmap_size = 268435456;",
         )?;
         Ok(Self(Mutex::new(conn)))
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Query {
     sql: String,
     #[serde(default)]
@@ -33,6 +36,15 @@ pub struct Query {
     /// Drizzle proxy method: "run" | "all" | "values" | "get".
     #[serde(default = "default_method")]
     method: String,
+}
+
+impl Query {
+    pub fn sql(&self) -> &str {
+        &self.sql
+    }
+    pub fn method(&self) -> &str {
+        &self.method
+    }
 }
 
 fn default_method() -> String {
@@ -64,7 +76,7 @@ fn to_json(v: ValueRef) -> Json {
 
 /// Runs one query. Rows come back as arrays of column values, which is what Drizzle's
 /// proxy driver expects; "get" returns the first row (or null).
-fn run(conn: &Connection, q: &Query) -> rusqlite::Result<Json> {
+pub fn run(conn: &Connection, q: &Query) -> rusqlite::Result<Json> {
     let mut stmt = conn.prepare_cached(&q.sql)?;
     let columns = stmt.column_count();
     let mut rows = stmt.query(params_from_iter(q.params.iter().map(to_sql)))?;

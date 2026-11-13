@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Misspelling } from "@lumen/shared/editor/blocknote";
 import { lumen } from "../db/client";
-import { spellchecker } from "../lib/spell";
+import { suggest } from "../lib/spell";
 import { Icon } from "./Icon";
 
 export function SpellMenu({ misspelling, onReplace, onClose }: { misspelling: Misspelling; onReplace: (text: string) => void; onClose: () => void }) {
@@ -15,7 +15,7 @@ export function SpellMenu({ misspelling, onReplace, onClose }: { misspelling: Mi
 
   useEffect(() => {
     let alive = true;
-    spellchecker().then((s) => alive && setSuggestions(s.suggest(word)));
+    suggest(word).then((s) => alive && setSuggestions(s), () => alive && setSuggestions([]));
     return () => {
       alive = false;
     };

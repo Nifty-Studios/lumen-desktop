@@ -20,6 +20,8 @@ import { lumen } from "../db/client";
 import { useAccount } from "../data/hooks";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { weatherIcon } from "../ambient/Clock";
+import { ScenePreview } from "../ambient/Scene";
+import { SCENES, type SceneId } from "@lumen/shared/scenes";
 import { pickFile, saveBytes } from "../lib/files";
 import { ambientSound } from "../lib/sound";
 import { Icon } from "./Icon";
@@ -172,8 +174,9 @@ function Appearance() {
   return (
     <>
       <Heading title="Appearance">Lumen shifts with the time of day.</Heading>
+      <ThemePicker />
       <AccentPicker />
-      <Field label="Theme">
+      <Field label="Light or dark">
         <Segmented
           value={settings.theme}
           onChange={(theme) => update({ theme })}
@@ -243,6 +246,52 @@ function Appearance() {
         />
       </Field>
     </>
+  );
+}
+
+/** The theme: drawn decor that lives with the sky, or just the sky. */
+function ThemePicker() {
+  const { settings, update, theme } = useAmbient();
+  const sky = `linear-gradient(180deg, ${theme.skyTop}, ${theme.skyMid} 60%, ${theme.skyBottom})`;
+  const card = (id: SceneId | null, name: string, description: string, icon: IconName) => {
+    const active = settings.scene === id;
+    return (
+      <button
+        key={id ?? "none"}
+        onClick={() => update({ scene: id })}
+        className={`group overflow-hidden rounded-2xl text-left transition-all hover:-translate-y-0.5 ${
+          active ? "-translate-y-0.5 shadow-[0_18px_34px_-14px_var(--shadow)]" : "shadow-[0_10px_26px_-16px_var(--shadow)]"
+        }`}
+      >
+        <div className="relative h-[104px] overflow-hidden" style={{ background: sky }}>
+          {id ? <ScenePreview scene={id} /> : <Icon name="sun" size={26} className="absolute top-5 right-6 text-white/80" />}
+          {active && (
+            <span className="absolute top-2.5 left-2.5 grid h-6 w-6 place-items-center rounded-full bg-accent text-accent-fg">
+              <Icon name="check" size={14} strokeWidth={2.4} />
+            </span>
+          )}
+        </div>
+        <div className={`px-3.5 py-2.5 ${active ? "bg-accent-soft" : "bg-hover"}`}>
+          <div className="flex items-center gap-2 text-[13.5px] font-medium">
+            <Icon name={icon} size={15} className={active ? "text-accent" : "text-muted"} />
+            {name}
+          </div>
+          <div className="mt-0.5 text-[12px] leading-snug text-muted">{description}</div>
+        </div>
+      </button>
+    );
+  };
+  return (
+    <div className="mb-3">
+      <div className="text-[14px]">Theme</div>
+      <div className="mt-0.5 mb-3 max-w-[56ch] text-[12.5px] text-muted">
+        A little world around your notes. It keeps your real sky: lamps come on at night, snow settles, and the umbrella comes out when it rains.
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {card(null, "Just the sky", "Nothing but the weather", "cloud-sun")}
+        {SCENES.map((s) => card(s.id, s.name, s.description, s.icon))}
+      </div>
+    </div>
   );
 }
 

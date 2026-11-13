@@ -1,0 +1,325 @@
+/* Themes: the drawn decor around the sky. The art comes from @lumen/shared/scenes; this file
+   places it and moves the parts marked with lm-* classes. */
+
+.scene {
+  pointer-events: none;
+  user-select: none;
+  animation: scene-in 900ms ease-out;
+}
+.scene svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+@keyframes scene-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.scene-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-overhead {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 15;
+  overflow: hidden;
+  width: 100%;
+  animation-name: scene-drop;
+}
+.scene-overhead svg {
+  width: auto;
+  height: 100%;
+}
+@keyframes scene-drop {
+  from {
+    opacity: 0;
+    translate: 0 -14px;
+  }
+}
+
+/* Sits on the sidebar's floor; its lamp light and steam rise a little over the page list. */
+.scene-corner {
+  flex: none;
+  width: 100%;
+  margin-top: -34px;
+  mask: linear-gradient(180deg, transparent 0, #000 22%);
+}
+@media (max-height: 640px) {
+  .scene-corner {
+    display: none;
+  }
+}
+
+.scene-preview {
+  position: absolute;
+  inset: 6px 0 0 0;
+  animation: none;
+}
+
+/* ---- moving parts ---- */
+
+.scene [class^="lm-"] {
+  transform-box: view-box;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+.lm-sway {
+  animation-name: lm-sway;
+  animation-duration: 8s;
+  animation-direction: alternate;
+}
+@keyframes lm-sway {
+  from {
+    rotate: -2.4deg;
+  }
+  to {
+    rotate: 2.4deg;
+  }
+}
+.lm-rustle {
+  animation-name: lm-rustle;
+  animation-duration: 6s;
+  animation-direction: alternate;
+}
+@keyframes lm-rustle {
+  from {
+    rotate: -1.6deg;
+  }
+  to {
+    rotate: 1.8deg;
+  }
+}
+.lm-twinkle {
+  animation-name: lm-twinkle;
+  animation-duration: 4s;
+  animation-direction: alternate;
+}
+@keyframes lm-twinkle {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.scene .lm-steam {
+  animation-name: lm-steam;
+  animation-duration: 3.4s;
+  animation-timing-function: linear;
+}
+@keyframes lm-steam {
+  from {
+    opacity: 0;
+    translate: 0 3px;
+  }
+  35% {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 0;
+    translate: 1.5px -8px;
+  }
+}
+.scene .lm-blink {
+  animation-name: lm-blink;
+  animation-duration: 1.1s;
+  animation-timing-function: steps(1);
+}
+@keyframes lm-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.lm-breathe {
+  animation-name: lm-breathe;
+  animation-duration: 2.8s;
+  animation-direction: alternate;
+}
+@keyframes lm-breathe {
+  to {
+    scale: 1.015 1.06;
+  }
+}
+.lm-flicker {
+  animation-name: lm-flicker;
+  animation-duration: 0.9s;
+  animation-direction: alternate;
+}
+@keyframes lm-flicker {
+  from {
+    scale: 0.92 0.9;
+  }
+  40% {
+    scale: 1.04 1.08;
+  }
+  to {
+    scale: 0.98 1;
+  }
+}
+.lm-firefly {
+  animation-name: lm-firefly;
+  animation-duration: 9s;
+}
+@keyframes lm-firefly {
+  0%,
+  100% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  20% {
+    opacity: 1;
+    translate: 7px -6px;
+  }
+  45% {
+    opacity: 0.25;
+    translate: 13px 2px;
+  }
+  70% {
+    opacity: 1;
+    translate: 4px 9px;
+  }
+}
+.lm-bob {
+  animation-name: lm-bob;
+  animation-duration: 5s;
+}
+@keyframes lm-bob {
+  0%,
+  78%,
+  100% {
+    rotate: 0deg;
+  }
+  84% {
+    rotate: -9deg;
+  }
+  90% {
+    rotate: 5deg;
+  }
+}
+.lm-float {
+  animation-name: lm-float;
+  animation-duration: 3.2s;
+  animation-direction: alternate;
+}
+@keyframes lm-float {
+  from {
+    translate: 0 1.5px;
+  }
+  to {
+    translate: 0 -3px;
+  }
+}
+.lm-shadow {
+  animation-name: lm-shadow;
+  animation-duration: 3.2s;
+  animation-direction: alternate;
+}
+@keyframes lm-shadow {
+  to {
+    scale: 0.8 1;
+    opacity: 0.12;
+  }
+}
+.lm-hover {
+  animation-name: lm-hover;
+  animation-duration: 11s;
+}
+@keyframes lm-hover {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: 9px -4px;
+  }
+  50% {
+    translate: 2px 3px;
+  }
+  75% {
+    translate: -8px -2px;
+  }
+}
+.lm-drift {
+  animation-name: lm-drift;
+  animation-duration: 14s;
+  animation-direction: alternate;
+}
+@keyframes lm-drift {
+  from {
+    translate: -3px 1.5px;
+  }
+  to {
+    translate: 3px -1.5px;
+  }
+}
+.scene .lm-bubble {
+  animation-name: lm-bubble;
+  animation-duration: 2.6s;
+  animation-timing-function: linear;
+}
+@keyframes lm-bubble {
+  from {
+    opacity: 0;
+    translate: 0 3px;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+.lm-blink-eye {
+  animation-name: lm-blink-eye;
+  animation-duration: 5.5s;
+}
+@keyframes lm-blink-eye {
+  0%,
+  94%,
+  100% {
+    scale: 1 1;
+  }
+  97% {
+    scale: 1 0.1;
+  }
+}
+.scene .lm-fly-right {
+  animation-name: lm-fly-right;
+  animation-duration: 50s;
+  animation-timing-function: linear;
+}
+@keyframes lm-fly-right {
+  from {
+    translate: -1300px 0;
+  }
+  to {
+    translate: 1300px 0;
+  }
+}
+.scene .lm-fly-left {
+  animation-name: lm-fly-left;
+  animation-duration: 50s;
+  animation-timing-function: linear;
+}
+@keyframes lm-fly-left {
+  from {
+    translate: 1300px 0;
+  }
+  to {
+    translate: -1300px 0;
+  }
+}
+
+/* Calm: no blinking or flickering, and nothing crosses the sky. */
+[data-motion="calm"] .scene .lm-blink,
+[data-motion="calm"] .scene .lm-flicker,
+[data-motion="calm"] .scene .lm-firefly {
+  animation: none;
+}

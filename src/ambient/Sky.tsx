@@ -6,6 +6,7 @@ import { moonLitPath } from "@lumen/shared/ambient";
 import { useAmbient } from "./AmbientProvider";
 import { Precipitation } from "./Precipitation";
 import { Celebration } from "./Celebration";
+import { SceneBackdrop } from "./Scene";
 import { ambientSound } from "../lib/sound";
 import "./Sky.css";
 
@@ -35,6 +36,7 @@ export function Sky() {
       <Moon phase={sky.moon.phase} visible={sky.moon.visible * (1 - sky.sun.dim * 0.85)} />
       <Sun altitude={sky.altitude} size={sky.sun.size} visible={sky.sun.visible} dim={sky.sun.dim} dark={theme.dark} />
       <Clouds cover={sky.clouds} wind={sky.wind} calm={calm} storm={sky.storm} />
+      <SceneBackdrop />
       {sky.fog > 0 && <Fog />}
       {sky.precip !== "none" && <Precipitation kind={sky.precip} intensity={sky.intensity} wind={sky.wind} dark={theme.dark || sky.daylight < 0.4} motion={settings.motion} />}
       {sky.storm && settings.motion !== "still" && <Lightning sound={settings.sound} />}

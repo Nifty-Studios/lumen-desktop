@@ -26,6 +26,7 @@ import {
 import { MoveMenu } from "./MoveMenu";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { Clock } from "../ambient/Clock";
+import { SceneCorner } from "../ambient/Scene";
 import { Icon } from "./Icon";
 import { Kbd, Popover } from "./ui";
 import { updates, useUpdate } from "../lib/updates";
@@ -122,6 +123,7 @@ export function Sidebar({ space, role, currentId, calendarOpen, onCalendar, onOp
         )}
       </nav>
 
+      <SceneCorner />
       <WhatsNewCard />
       <UpdateCard />
       <AccountCard onSignIn={onSignIn} />

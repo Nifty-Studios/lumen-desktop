@@ -3,6 +3,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { computeSky, themeFor, type LumenSettings, type SavedLocation, type SkyState, type ThemeTokens, type Weather } from "@lumen/shared/ambient";
+import { sceneOf } from "@lumen/shared/scenes";
 import { CELEBRATIONS, type ActiveCelebration, type CelebrationId } from "@lumen/shared/calendar";
 import { lumen } from "../db/client";
 import { bestLocation, deviceLocation } from "../lib/location";
@@ -169,7 +170,10 @@ export function AmbientProvider({ children }: { children: ReactNode }) {
       }),
     [now, settings.location, settings.liveWeather, settings.envTime, settings.envWeather, weather],
   );
-  const theme = useMemo(() => themeFor(sky, dark, settings.accent, celebration?.celebration), [sky, dark, settings.accent, celebration]);
+  const theme = useMemo(
+    () => themeFor(sky, dark, settings.accent, celebration?.celebration, sceneOf(settings.scene)),
+    [sky, dark, settings.accent, celebration, settings.scene],
+  );
 
   useLayoutEffect(() => {
     const root = document.documentElement;

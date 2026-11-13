@@ -23,6 +23,8 @@ serde_json = "1"
 # Bundled SQLite (FTS5 enabled), one connection, so batches run in real transactions.
 rusqlite = { version = "0.41", features = ["bundled"] }
 tauri-plugin-process = "2"
+# Hunspell-compatible spellchecking, so the dictionary is parsed and searched off the UI thread.
+spellbook = "0.4"
 
 # Device location for the live sky and scheduled reminder notifications (the same windows
 # crate Tauri already builds).

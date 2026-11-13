@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { lumen } from "./db/client";
+import { finishBoot, lumen } from "./db/client";
 import { account, createPage, getSpace, listSpaces, setCurrentSpace } from "./data/workspace";
 import { useLive } from "./data/hooks";
 import { AmbientProvider } from "./ambient/AmbientProvider";
 import { Sky } from "./ambient/Sky";
+import { SceneOverhead } from "./ambient/Scene";
 import { AuthScreen } from "./components/Auth";
 import { LoadingMark, WelcomeVideo } from "./components/Intro";
 import { Sidebar } from "./components/Sidebar";
@@ -17,6 +18,7 @@ import { notify } from "./lib/notify";
 import { startReminders } from "./lib/reminders";
 import { BirthdayPrompt, CalendarView } from "./components/Calendar";
 import { updates } from "./lib/updates";
+import { warmSpellchecker } from "./lib/spell";
 
 type Boot = { state: "loading" } | { state: "error"; message: string } | { state: "auth" } | { state: "ready" };
 
@@ -76,6 +78,17 @@ function Screens() {
 
   useEffect(() => (boot.state === "ready" ? updates.start() : undefined), [boot.state]);
 
+  // Once the first screen has had a moment to load: save what it read as the next launch's
+  // prefetch plan, and have Rust parse the spelling dictionary before a word needs checking.
+  useEffect(() => {
+    if (boot.state === "loading" || boot.state === "error") return;
+    const t = window.setTimeout(() => {
+      finishBoot();
+      if (boot.state === "ready") warmSpellchecker();
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, [boot.state]);
+
   if (boot.state === "loading") return <LoadingMark />;
   if (welcome)
     return (
@@ -92,6 +105,7 @@ function Screens() {
     <AmbientProvider>
       <ToastProvider>
         <Sky />
+        <SceneOverhead />
         {boot.state === "auth" ? (
           <AuthScreen
             onDone={() => setBoot({ state: "ready" })}
