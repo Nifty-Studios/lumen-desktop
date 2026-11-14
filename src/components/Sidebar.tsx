@@ -26,7 +26,7 @@ import {
 import { MoveMenu } from "./MoveMenu";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { Clock } from "../ambient/Clock";
-import { SceneCorner } from "../ambient/Scene";
+import { SceneCorner, SceneCrest, ScenePerch } from "../ambient/Scene";
 import { Icon } from "./Icon";
 import { Kbd, Popover } from "./ui";
 import { updates, useUpdate } from "../lib/updates";
@@ -62,6 +62,7 @@ export function Sidebar({ space, role, currentId, calendarOpen, onCalendar, onOp
 
   return (
     <aside className="glass flex w-[272px] shrink-0 flex-col overflow-hidden rounded-[22px] text-[13.5px] select-none">
+      <SceneCrest />
       <Clock onOpenSky={() => onSettings("environment")} />
 
       <div className="px-2.5 pb-2">
@@ -269,6 +270,7 @@ function WhatsNewCard() {
       {open &&
         createPortal(
         <div className="animate-fade fixed inset-0 z-50 grid place-items-center p-6" style={{ background: "var(--scrim)" }} onMouseDown={() => setOpen(false)}>
+          <ScenePerch />
           <div className="surface animate-pop flex max-h-[calc(100vh-48px)] w-[min(480px,94vw)] flex-col rounded-[26px] p-6" onMouseDown={(e) => e.stopPropagation()}>
             <div className="mb-1 text-[11px] font-medium tracking-[0.14em] text-faint uppercase">Lumen {note.version}</div>
             <h2 className="mb-4 font-serif text-[22px] leading-tight font-semibold">{note.note.title}</h2>

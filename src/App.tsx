@@ -4,7 +4,7 @@ import { account, createPage, getSpace, listSpaces, setCurrentSpace } from "./da
 import { useLive } from "./data/hooks";
 import { AmbientProvider } from "./ambient/AmbientProvider";
 import { Sky } from "./ambient/Sky";
-import { SceneOverhead } from "./ambient/Scene";
+import { SceneOverhead, ScenePage, SceneRoot } from "./ambient/Scene";
 import { AuthScreen } from "./components/Auth";
 import { LoadingMark, WelcomeVideo } from "./components/Intro";
 import { Sidebar } from "./components/Sidebar";
@@ -105,6 +105,7 @@ function Screens() {
     <AmbientProvider>
       <ToastProvider>
         <Sky />
+        <SceneRoot />
         <SceneOverhead />
         {boot.state === "auth" ? (
           <AuthScreen
@@ -229,6 +230,7 @@ function Workspace() {
             <Icon name="panel-left" size={17} />
           </button>
         )}
+        {!calendar && <ScenePage />}
         {calendar ? (
           <CalendarView space={space} role={role} onShowSidebar={sidebar ? undefined : () => setSidebar(true)} onOpenSettings={() => setSettings("calendar")} />
         ) : pageId ? (

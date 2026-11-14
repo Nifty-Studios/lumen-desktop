@@ -330,3 +330,372 @@
 [data-motion="calm"] .scene .lm-firefly {
   animation: none;
 }
+
+/* ---- the rest of the room: sidebar crest, the page's rail and floor, dialog perches ---- */
+
+.scene-crest {
+  flex: none;
+  width: 100%;
+  margin-bottom: -4px;
+}
+@media (max-height: 760px) {
+  .scene-crest {
+    display: none;
+  }
+}
+
+/* Inside the page sheet, over the text column's margins. Nothing here takes a click except
+   the things you can poke. */
+.scene-page {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.scene-floor {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  mask: linear-gradient(90deg, #000 0, #000 30%, rgba(0, 0, 0, 0.82) 100%);
+}
+.scene-floor svg {
+  width: auto;
+  height: 100%;
+}
+.scene-rail {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  bottom: 0;
+  /* Fades out under the page's top bar, and leaves the sun its corner. */
+  mask: linear-gradient(180deg, transparent 40px, #000 104px);
+  animation-name: scene-rise;
+}
+@keyframes scene-rise {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}
+/* Stands on a dialog's top edge; Scene.tsx measures the dialog and places it. */
+.scene-perch {
+  position: fixed;
+  z-index: 1;
+  animation: scene-perch 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+}
+@keyframes scene-perch {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
+/* Poke things. */
+.scene [data-poke] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.scene [data-poke].is-poked {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lm-poke 0.7s ease-out 1;
+}
+@keyframes lm-poke {
+  25% {
+    scale: 1.07 0.9;
+  }
+  45% {
+    scale: 0.96 1.08;
+    translate: 0 -5px;
+    rotate: -4deg;
+  }
+  70% {
+    rotate: 3deg;
+  }
+}
+/* The lamp, the lantern and the neon sign are switches. */
+.scene .lm-light {
+  transition: opacity 500ms ease;
+}
+:root[data-lights="off"] .scene .lm-light {
+  opacity: 0 !important;
+  animation: none;
+}
+
+/* ---- more moving parts ---- */
+
+.scene .lm-turn {
+  animation-name: lm-turn;
+  animation-timing-function: linear;
+}
+.scene .lm-spin {
+  animation-name: lm-turn;
+  animation-timing-function: linear;
+}
+@keyframes lm-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+.scene .lm-fall {
+  animation-name: lm-fall;
+  animation-timing-function: linear;
+}
+@keyframes lm-fall {
+  from {
+    opacity: 0;
+    translate: 0 0;
+  }
+  15% {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 0;
+    translate: -14px 60px;
+  }
+}
+.scene .lm-trickle {
+  animation-name: lm-trickle;
+  animation-timing-function: ease-in;
+}
+@keyframes lm-trickle {
+  from {
+    opacity: 0;
+    translate: 0 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 0 70px;
+  }
+}
+.scene .lm-snowfall {
+  animation-name: lm-snowfall;
+  animation-timing-function: linear;
+}
+@keyframes lm-snowfall {
+  from {
+    translate: 0 -10px;
+  }
+  50% {
+    translate: 12px 55px;
+  }
+  to {
+    translate: 4px 120px;
+  }
+}
+.scene .lm-flash {
+  animation-name: lm-flash;
+  animation-timing-function: linear;
+}
+@keyframes lm-flash {
+  0%,
+  91%,
+  96%,
+  100% {
+    opacity: 0;
+  }
+  92% {
+    opacity: 0.8;
+  }
+  93% {
+    opacity: 0.1;
+  }
+  94% {
+    opacity: 0.6;
+  }
+}
+.scene .lm-drip {
+  animation-name: lm-drip;
+  animation-timing-function: ease-in;
+}
+@keyframes lm-drip {
+  from {
+    opacity: 0;
+    translate: 0 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.9;
+    translate: 0 30px;
+  }
+}
+.scene .lm-leaf-fall {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: lm-leaf-fall;
+  animation-timing-function: linear;
+}
+@keyframes lm-leaf-fall {
+  from {
+    opacity: 0;
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    translate: 36px calc(var(--fall, 400px) * 0.5);
+    rotate: 170deg;
+  }
+  92% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: -8px var(--fall, 400px);
+    rotate: 330deg;
+  }
+}
+.scene .lm-crawl {
+  animation-name: lm-crawl;
+  animation-timing-function: linear;
+}
+@keyframes lm-crawl {
+  from {
+    opacity: 0;
+    translate: 0 0;
+  }
+  5%,
+  95% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 150px 0;
+  }
+}
+.scene .lm-ripple {
+  animation-name: lm-ripple;
+  animation-timing-function: ease-out;
+}
+@keyframes lm-ripple {
+  from {
+    opacity: 0.7;
+    scale: 0.4;
+  }
+  to {
+    opacity: 0;
+    scale: 1.9;
+  }
+}
+.scene .lm-chase {
+  animation-name: lm-chase;
+  animation-timing-function: steps(1);
+}
+@keyframes lm-chase {
+  50% {
+    opacity: 0.25;
+  }
+}
+.scene .lm-neon-buzz {
+  animation-name: lm-neon-buzz;
+  animation-timing-function: linear;
+}
+@keyframes lm-neon-buzz {
+  0%,
+  86%,
+  88%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+  87% {
+    opacity: 0.35;
+  }
+  90% {
+    opacity: 0.2;
+  }
+}
+.scene .lm-cross {
+  animation-name: lm-cross;
+  animation-timing-function: linear;
+}
+@keyframes lm-cross {
+  from {
+    translate: 0 0;
+  }
+  40%,
+  to {
+    translate: var(--span, 200px) -12px;
+  }
+}
+.scene .lm-meteor {
+  animation-name: lm-meteor;
+  animation-timing-function: linear;
+}
+@keyframes lm-meteor {
+  from {
+    opacity: 0;
+    translate: 40px -52px;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: -50px 65px;
+  }
+}
+.scene .lm-bubble-rise {
+  animation-name: lm-bubble-rise;
+  animation-timing-function: linear;
+}
+@keyframes lm-bubble-rise {
+  from {
+    opacity: 0;
+    translate: 0 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -52px;
+  }
+}
+.scene .lm-note {
+  animation-name: lm-note;
+  animation-timing-function: ease-out;
+}
+@keyframes lm-note {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 9px -34px;
+  }
+}
+.scene .lm-patrol {
+  animation-name: lm-patrol;
+  animation-direction: alternate;
+}
+@keyframes lm-patrol {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: var(--span, 300px) 0;
+  }
+}
+
+[data-motion="calm"] .scene .lm-flash,
+[data-motion="calm"] .scene .lm-neon-buzz,
+[data-motion="calm"] .scene .lm-chase,
+[data-motion="calm"] .scene .lm-meteor,
+[data-motion="calm"] .scene .lm-patrol {
+  animation: none;
+}

@@ -64,7 +64,7 @@ export function PageView({ pageId, onOpen, onSignIn, onShowSidebar }: Props) {
         </div>
       )}
       <div
-        className="mx-auto max-w-[760px] px-16 pt-10"
+        className="scene-pad mx-auto max-w-[760px] px-16 pt-10"
         onMouseDown={(e) => {
           // Clicking the empty space around the text starts typing at the end.
           if (e.target === e.currentTarget && editor && !readOnly) {

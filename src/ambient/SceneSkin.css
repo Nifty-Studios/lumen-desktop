@@ -1,0 +1,258 @@
+/* With a theme on, every surface dresses for it: the colors come from the theme's paper and
+   ink (themeFor), and this file gives each world its own materials and shapes. Still no
+   outlines anywhere: edges are made of light, shadow and fills. */
+
+/* ---- shared by all themes ---- */
+
+:root[data-scene] ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+  background-clip: padding-box;
+}
+:root[data-scene] ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent) 56%, transparent);
+  background-clip: padding-box;
+}
+/* Room at the foot of the page for the ground the theme lays there, and the text column
+   sits in the middle of what the rail leaves free. */
+:root[data-scene] .scene-pad {
+  padding-bottom: 84px;
+  margin-left: max(0px, calc((100% - 760px - var(--scene-rail, 0px)) / 2));
+  transition: margin-left 300ms ease;
+}
+:root[data-scene] .bn-block-content[data-content-type="bulletListItem"]::before,
+:root[data-scene] .bn-block-content[data-content-type="numberedListItem"]::before {
+  color: var(--accent);
+}
+
+/* ================= Workstation: paper, wood, a warm lamp ================= */
+
+/* The page is a sheet from a dot-grid notebook. */
+:root[data-scene="workstation"] .sheet::before {
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 13%, transparent) 1px, transparent 1.6px), linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent 30%);
+  background-size:
+    22px 22px,
+    100% 100%;
+}
+/* The sidebar is the side of a wooden cabinet: a little grain, warmer toward the floor. */
+:root[data-scene="workstation"] aside.glass {
+  background-image:
+    repeating-linear-gradient(91deg, color-mix(in srgb, var(--text) 3.5%, transparent) 0 1px, transparent 1px 7px, color-mix(in srgb, var(--text) 2%, transparent) 7px 9px, transparent 9px 17px),
+    linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--accent) 13%, transparent));
+}
+/* The open page is an index tab. */
+:root[data-scene="workstation"] aside .bg-active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+  border-radius: 4px 12px 12px 4px;
+}
+/* Buttons you can press. */
+:root[data-scene="workstation"] .bg-accent {
+  box-shadow:
+    0 2px 0 color-mix(in srgb, var(--accent) 62%, #000),
+    0 6px 14px -8px var(--shadow);
+  transition:
+    translate 80ms,
+    box-shadow 80ms,
+    filter 120ms;
+}
+:root[data-scene="workstation"] .bg-accent:active {
+  translate: 0 2px;
+  box-shadow: 0 0 0 color-mix(in srgb, var(--accent) 62%, #000);
+}
+/* Cards are slips of paper. */
+:root[data-scene="workstation"] aside .bg-accent-soft {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-radius: 6px;
+  box-shadow: 0 8px 16px -12px var(--shadow);
+  rotate: -0.6deg;
+}
+/* Dialogs and menus: thick card stock with a taped top edge. */
+:root[data-scene="workstation"] .surface {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 90px);
+}
+/* Headings get a stroke of highlighter. */
+:root[data-scene="workstation"] .bn-block-content[data-content-type="heading"] .bn-inline-content {
+  background: linear-gradient(transparent 64%, color-mix(in srgb, var(--accent) 26%, transparent) 64%, color-mix(in srgb, var(--accent) 26%, transparent) 92%, transparent 92%);
+  width: fit-content;
+  padding-right: 6px;
+}
+/* Callouts are sticky notes. */
+:root[data-scene="workstation"] .lumen-callout {
+  background: color-mix(in srgb, #ffd54a 26%, var(--solid));
+  border-radius: 3px 3px 18px 3px;
+  box-shadow: 0 10px 16px -12px var(--shadow);
+}
+:root[data-scene="workstation"] .bn-block-content[data-content-type="codeBlock"] {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  border-radius: 6px;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+}
+:root[data-scene="workstation"] .bn-block-content[data-content-type="quote"] blockquote {
+  border-left: 3px solid var(--accent);
+}
+
+/* ================= Forest: moss, bark, light through leaves ================= */
+
+/* Sun comes through the canopy onto the page and moves, slowly. */
+:root[data-scene="forest"] .sheet::before {
+  background-image:
+    radial-gradient(420px 300px at 18% 12%, color-mix(in srgb, #ffe9a0 13%, transparent), transparent 70%), radial-gradient(520px 380px at 74% 58%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+    radial-gradient(380px 260px at 30% 92%, color-mix(in srgb, #ffe9a0 9%, transparent), transparent 70%);
+  background-size: 130% 130%;
+  animation: forest-dapple 46s ease-in-out infinite alternate;
+}
+@keyframes forest-dapple {
+  from {
+    background-position:
+      0% 0%,
+      100% 20%,
+      20% 100%;
+  }
+  to {
+    background-position:
+      60% 40%,
+      30% 80%,
+      90% 60%;
+  }
+}
+[data-motion="still"] :root[data-scene="forest"] .sheet::before,
+:root[data-scene="forest"][data-motion="still"] .sheet::before {
+  animation: none;
+}
+/* The sidebar is the shaded side: moss creeping up from the ground. */
+:root[data-scene="forest"] aside.glass {
+  background-image:
+    radial-gradient(180px 120px at 12% 100%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%), radial-gradient(220px 150px at 92% 96%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+    linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--accent) 12%, transparent));
+}
+/* Leaf shapes: one corner pointed, the opposite ones round. */
+:root[data-scene="forest"] aside .bg-active {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 16px 4px 16px 4px;
+}
+:root[data-scene="forest"] .bg-accent {
+  border-radius: 999px;
+  background-image: linear-gradient(180deg, color-mix(in srgb, #fff 18%, transparent), transparent);
+  box-shadow: 0 8px 18px -10px var(--accent);
+}
+:root[data-scene="forest"] aside .bg-accent-soft,
+:root[data-scene="forest"] .lumen-callout {
+  border-radius: 22px 6px 22px 6px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+:root[data-scene="forest"] .surface {
+  background-image: radial-gradient(260px 160px at 100% 0, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%), radial-gradient(200px 140px at 0 100%, color-mix(in srgb, #ffe9a0 7%, transparent), transparent 70%);
+}
+/* A vine for the quote's edge, a trail of seeds for the divider. */
+:root[data-scene="forest"] .bn-block-content[data-content-type="quote"] blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  border-radius: 0 0 0 12px;
+}
+:root[data-scene="forest"] .bn-block-content[data-content-type="divider"] hr {
+  border: 0;
+  height: 4px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 60%, transparent) 1.5px, transparent 2px) 0 0 / 14px 4px;
+}
+:root[data-scene="forest"] .bn-block-content[data-content-type="codeBlock"] {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border-radius: 18px 6px 18px 6px;
+}
+:root[data-scene="forest"] .bn-block-content[data-content-type="heading"] .bn-inline-content {
+  color: color-mix(in srgb, var(--accent) 34%, var(--text));
+}
+
+/* ================= Sci-fi restaurant: chrome, glass, neon ================= */
+
+/* The page is a lit panel: a faint grid, light spilling in from the edges. */
+:root[data-scene="restaurant"] .sheet {
+  box-shadow:
+    0 30px 80px -30px var(--shadow),
+    0 0 46px -18px var(--accent),
+    0 2px 10px -4px var(--shadow);
+}
+:root[data-scene="restaurant"] .sheet::before {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text) 4.5%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--text) 4.5%, transparent) 1px, transparent 1px),
+    radial-gradient(600px 300px at 0 0, color-mix(in srgb, #5ef2ff 9%, transparent), transparent 70%), radial-gradient(600px 340px at 100% 100%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+  background-size:
+    36px 36px,
+    36px 36px,
+    100% 100%,
+    100% 100%;
+}
+/* The sidebar is brushed steel with a neon tube down its inner edge. */
+:root[data-scene="restaurant"] aside.glass {
+  background-image:
+    linear-gradient(90deg, color-mix(in srgb, #fff 6%, transparent), transparent 22%, transparent 70%, color-mix(in srgb, var(--accent) 14%, transparent)),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--text) 2.5%, transparent) 0 1px, transparent 1px 4px);
+  box-shadow:
+    0 30px 80px -30px var(--shadow),
+    inset -14px 0 26px -18px var(--accent),
+    0 0 40px -20px #5ef2ff;
+}
+/* Cut corners, and everything chosen lights up. */
+:root[data-scene="restaurant"] aside .bg-active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 30%, transparent), transparent);
+  box-shadow:
+    inset 2px 0 0 var(--accent),
+    -8px 0 18px -8px var(--accent);
+  border-radius: 3px 12px 3px 12px;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+:root[data-scene="restaurant"] .bg-accent {
+  border-radius: 4px 13px 4px 13px;
+  box-shadow:
+    0 0 22px -5px var(--accent),
+    inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent);
+}
+:root[data-scene="restaurant"] .bg-accent:hover {
+  box-shadow:
+    0 0 30px -3px var(--accent),
+    inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent);
+}
+:root[data-scene="restaurant"] aside .bg-accent-soft {
+  border-radius: 4px 16px 4px 16px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, #5ef2ff 10%, transparent));
+  box-shadow: 0 0 26px -14px var(--accent);
+}
+:root[data-scene="restaurant"] .surface {
+  background-image: linear-gradient(135deg, color-mix(in srgb, #5ef2ff 8%, transparent), transparent 40%, color-mix(in srgb, var(--accent) 10%, transparent));
+  box-shadow:
+    0 30px 90px -20px var(--shadow),
+    0 0 50px -18px var(--accent),
+    0 6px 20px -8px var(--shadow);
+}
+/* Headings and the page title glow like tubes. */
+:root[data-scene="restaurant"] .bn-block-content[data-content-type="heading"] .bn-inline-content,
+:root[data-scene="restaurant"] main textarea.font-serif {
+  text-shadow:
+    0 0 22px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+:root[data-scene="restaurant"] .lumen-callout {
+  border-radius: 4px 16px 4px 16px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, #5ef2ff 7%, transparent));
+  box-shadow:
+    inset 2px 0 0 var(--accent),
+    -10px 0 22px -12px var(--accent);
+}
+/* Code is a terminal on the wall. */
+:root[data-scene="restaurant"] .bn-block-content[data-content-type="codeBlock"] {
+  background: color-mix(in srgb, #06051a 62%, transparent);
+  color: #8ff5ff;
+  border-radius: 4px 14px 4px 14px;
+  box-shadow: 0 0 24px -12px #5ef2ff;
+}
+:root[data-scene="restaurant"] .bn-block-content[data-content-type="quote"] blockquote {
+  border-left: 2px solid #5ef2ff;
+  box-shadow: -8px 0 16px -10px #5ef2ff;
+}
+:root[data-scene="restaurant"] .bn-block-content[data-content-type="divider"] hr {
+  border: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), #5ef2ff, transparent);
+  box-shadow: 0 0 12px var(--accent);
+}
+:root[data-scene="restaurant"] .bn-block-content[data-content-type="checkListItem"] input[type="checkbox"] {
+  accent-color: #25b9d6;
+}

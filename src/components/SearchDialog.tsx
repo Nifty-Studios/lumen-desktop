@@ -3,6 +3,7 @@ import type { Block } from "@lumen/shared/schema/client";
 import { iconColor, resolveIcon } from "@lumen/shared/icons";
 import { getBlock, pageTitle, search } from "../data/workspace";
 import { useAmbient } from "../ambient/AmbientProvider";
+import { ScenePerch } from "../ambient/Scene";
 import { Icon } from "./Icon";
 import { Kbd } from "./ui";
 
@@ -35,6 +36,7 @@ export function SearchDialog({ onClose, onOpen }: { onClose: () => void; onOpen:
 
   return (
     <div className="animate-fade fixed inset-0 z-50 flex justify-center pt-[14vh]" style={{ background: "var(--scrim)" }} onMouseDown={onClose}>
+      <ScenePerch />
       <div className="surface animate-pop h-fit w-[600px] max-w-[90vw] overflow-hidden rounded-3xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-5">
           <Icon name="search" size={18} className="text-muted" />

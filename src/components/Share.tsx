@@ -2,6 +2,7 @@
 // someone a page is shared with gets that page and everything under it, nothing else.
 // Invites need no email: they apply as soon as that address signs up or logs in.
 
+import { ScenePerch } from "../ambient/Scene";
 import { useEffect, useState, type FormEvent } from "react";
 import { canEdit, type Person, type Role } from "@lumen/shared";
 import { AccountError } from "@lumen/shared/client";
@@ -75,6 +76,7 @@ export function ShareDialog({ page, onClose, onSignIn }: { page: Block; onClose:
 
   return (
     <div className="animate-fade fixed inset-0 z-50 grid place-items-center p-6" style={{ background: "var(--scrim)" }} onMouseDown={onClose}>
+      <ScenePerch />
       <div className="surface animate-pop w-[min(480px,94vw)] rounded-[26px] p-6" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-start gap-3">
           <span className="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-accent-soft text-accent">

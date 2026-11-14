@@ -29,6 +29,7 @@ import { lumen } from "../db/client";
 import { listSpaces } from "../data/workspace";
 import { useLive } from "../data/hooks";
 import { useAmbient } from "../ambient/AmbientProvider";
+import { ScenePerch } from "../ambient/Scene";
 import { timeParts } from "../ambient/Clock";
 import { Icon } from "./Icon";
 import { Button, Popover, Select, TextInput, Toggle, useToast } from "./ui";
@@ -527,6 +528,7 @@ function EventDialog(props: { id?: string | undefined; date: string; sticker?: s
 
   return (
     <div className="animate-fade fixed inset-0 z-50 grid place-items-center p-6" style={{ background: "var(--scrim)" }} onMouseDown={onClose}>
+      <ScenePerch />
       <div className="surface animate-pop max-h-[92vh] w-[min(520px,94vw)] overflow-y-auto rounded-[26px] p-6" onMouseDown={(e) => e.stopPropagation()}>
         {builtin ? (
           <BuiltinDay event={loaded!} date={date} onClose={onClose} onOpenSettings={onOpenSettings} />
@@ -787,6 +789,7 @@ export function BirthdayPrompt({ onClose }: { onClose: () => void }) {
   };
   return (
     <div className="animate-fade fixed inset-0 z-50 grid place-items-center p-6" style={{ background: "var(--scrim)" }}>
+      <ScenePerch />
       <div className="surface animate-pop w-[min(440px,94vw)] rounded-[26px] p-6">
         <span className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent">
           <Icon name="cake" size={24} />

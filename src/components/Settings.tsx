@@ -20,7 +20,7 @@ import { lumen } from "../db/client";
 import { useAccount } from "../data/hooks";
 import { useAmbient } from "../ambient/AmbientProvider";
 import { weatherIcon } from "../ambient/Clock";
-import { ScenePreview } from "../ambient/Scene";
+import { ScenePerch, ScenePreview } from "../ambient/Scene";
 import { SCENES, type SceneId } from "@lumen/shared/scenes";
 import { pickFile, saveBytes } from "../lib/files";
 import { ambientSound } from "../lib/sound";
@@ -59,6 +59,7 @@ export function Settings({ initial = "appearance", onClose, onSignIn, onSignedOu
 
   return (
     <div className="animate-fade fixed inset-0 z-50 grid place-items-center p-6" style={{ background: "var(--scrim)" }} onMouseDown={onClose}>
+      <ScenePerch />
       <div className="surface animate-pop flex h-[min(620px,88vh)] w-[min(880px,94vw)] overflow-hidden rounded-[28px]" onMouseDown={(e) => e.stopPropagation()}>
         <nav className="flex w-56 flex-none flex-col gap-0.5 p-3 pt-5" style={{ background: "var(--hover)" }}>
           <div className="px-3 pb-3 font-serif text-[22px] font-semibold">Settings</div>
